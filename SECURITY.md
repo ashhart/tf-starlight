@@ -2,10 +2,10 @@
 
 ## Reporting a vulnerability
 
-Report security problems privately through TensorFold's Security tab: open
-[a new advisory](https://github.com/ashhart/TensorFold/security/advisories/new) and name Starlight in its title. Please
-don't open a public issue or pull request for a problem that isn't fixed yet. You'll get a reply within three days, and
-a fix or a mitigation lands as soon as it is gated, within two weeks for anything serious.
+Report security problems privately: open this repository's Security tab and choose "Report a vulnerability"
+([a new advisory](https://github.com/ashhart/tf-starlight/security/advisories/new)). Please don't open a public issue or
+pull request for a problem that isn't fixed yet. You'll get a reply within three days, and a fix or a mitigation lands
+as soon as it is gated, within two weeks for anything serious.
 
 ## Supported versions
 
