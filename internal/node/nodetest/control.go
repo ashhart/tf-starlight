@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/permit"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/permit"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // Control is an in-process Starlight control endpoint with its own workload CA and permit key.

@@ -12,11 +12,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/control"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/control"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
 )
 
 type labels map[string]string

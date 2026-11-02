@@ -14,12 +14,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oauth"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/oauth"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 type pages struct {

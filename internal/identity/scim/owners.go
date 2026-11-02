@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/people"
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/admin/people"
+	"github.com/ashhart/tf-starlight/internal/audit"
 )
 
 // errLastOwner refuses a suspension or deletion that would leave the organisation without an active owner.

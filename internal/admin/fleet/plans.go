@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // Plan is a frontier-drafted plan as the console shows it; Sealed stays encrypted until a permitted viewer opens it.

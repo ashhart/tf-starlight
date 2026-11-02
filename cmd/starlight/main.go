@@ -11,10 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/buildinfo"
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/config"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/buildinfo"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/config"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 func main() {

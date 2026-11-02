@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fsutil"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/oauth"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/store"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/connect/fsutil"
+	"github.com/ashhart/tf-starlight/internal/connect/oauth"
+	"github.com/ashhart/tf-starlight/internal/connect/store"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 // Key is the credential-store entry that holds the token set.

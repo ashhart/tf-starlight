@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/levels"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/levels"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 // TestAdmissionScalesWithReplicas measures admit-and-settle cycles a second for one model; STARLIGHT_SCALE=1 runs it.

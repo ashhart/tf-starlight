@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
 )
 
 func TestParsePin(t *testing.T) {

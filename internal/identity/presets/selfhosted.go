@@ -1,7 +1,7 @@
 package presets
 
 import (
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // eduPerson and X.500 attribute names that Shibboleth and other SAML IdPs release.

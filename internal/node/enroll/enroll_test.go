@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
-	"github.com/ashhart/TensorFold/starlight/internal/node/enroll"
-	"github.com/ashhart/TensorFold/starlight/internal/node/nodetest"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
-	"github.com/ashhart/TensorFold/starlight/internal/node/trust"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/node/enroll"
+	"github.com/ashhart/tf-starlight/internal/node/nodetest"
+	"github.com/ashhart/tf-starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/node/trust"
 )
 
 func dir(t *testing.T) *state.Dir {

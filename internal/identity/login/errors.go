@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/mapping"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/mapping"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 // errStale covers expired, replayed and unbound sign-in attempts alike, so none is distinguishable to a prober.

@@ -7,13 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/permit"
-	"github.com/ashhart/TensorFold/starlight/internal/node/artifacts"
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
-	"github.com/ashhart/TensorFold/starlight/internal/node/engine"
-	"github.com/ashhart/TensorFold/starlight/internal/node/enroll"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/permit"
+	"github.com/ashhart/tf-starlight/internal/node/artifacts"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/node/engine"
+	"github.com/ashhart/tf-starlight/internal/node/enroll"
+	"github.com/ashhart/tf-starlight/internal/node/state"
 )
 
 // Syncer is the node's control loop.

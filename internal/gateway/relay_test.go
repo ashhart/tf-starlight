@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/providers"
 )
 
 func sse(events ...string) *http.Response {

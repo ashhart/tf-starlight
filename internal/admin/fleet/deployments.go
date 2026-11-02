@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // Deployment is a model revision plus where and how to run it.

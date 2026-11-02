@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
 )
 
 // CheckPolicy enforces the connection's allowed domains and required groups.

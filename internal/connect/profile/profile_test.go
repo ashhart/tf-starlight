@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/managed"
+	"github.com/ashhart/tf-starlight/internal/connect/managed"
 )
 
 func TestSaveLoadPrivate(t *testing.T) {

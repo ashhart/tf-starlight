@@ -9,9 +9,9 @@ import (
 	"net/textproto"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/appkeys"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/tokens"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/connect/appkeys"
+	"github.com/ashhart/tf-starlight/internal/connect/tokens"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 // dropped request headers: hop-by-hop, the client's own credentials, and anything Connect sets itself.

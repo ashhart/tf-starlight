@@ -12,7 +12,7 @@ import (
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // authTimeSkew tolerates clock drift between Starlight and the IdP when enforcing max_age.

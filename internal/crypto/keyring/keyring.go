@@ -16,7 +16,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 const sealVersion = 1

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/providers"
 )
 
 // Capabilities describe what a model can do, shown to clients and used to pick endpoints.

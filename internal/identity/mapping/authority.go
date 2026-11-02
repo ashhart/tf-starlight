@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // ErrForeignDomain means the email's domain is routed to another connection, which alone may vouch for it.

@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // Usage is what a request consumed; Observed is false when the final usage never arrived.

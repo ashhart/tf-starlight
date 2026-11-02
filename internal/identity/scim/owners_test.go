@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 var suspend = map[string]any{"Operations": []any{map[string]any{"op": "replace", "path": "active", "value": false}}}

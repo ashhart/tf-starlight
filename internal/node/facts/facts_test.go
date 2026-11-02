@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 func TestParseNvidiaCSV(t *testing.T) {

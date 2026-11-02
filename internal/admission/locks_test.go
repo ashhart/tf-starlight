@@ -9,9 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/levels"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/levels"
 )
 
 // active counts running statements whose text contains needle, only those waiting for a lock when locked is set.

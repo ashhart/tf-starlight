@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
 )
 
 // Set is every series Starlight exports.

@@ -12,8 +12,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/catalog"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/keyring"
+	"github.com/ashhart/tf-starlight/internal/catalog"
+	"github.com/ashhart/tf-starlight/internal/crypto/keyring"
 )
 
 // Protocols a route can speak, keyed by the client-facing endpoint.

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 // UsageFilter selects usage rows; nil Projects means every project, and Limit 0 means the top 1,000 groups.

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 // Scope decides which parts of the live view a viewer may see.

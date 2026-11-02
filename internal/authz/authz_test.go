@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func TestRoleScopes(t *testing.T) {

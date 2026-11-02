@@ -8,13 +8,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
-	"github.com/ashhart/TensorFold/starlight/internal/catalog"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oauth"
-	"github.com/ashhart/TensorFold/starlight/internal/providers"
-	"github.com/ashhart/TensorFold/starlight/internal/web"
+	"github.com/ashhart/tf-starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/catalog"
+	"github.com/ashhart/tf-starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/oauth"
+	"github.com/ashhart/tf-starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/web"
 )
 
 // oauthPages renders the OAuth flows with the shared web templates.

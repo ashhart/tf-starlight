@@ -9,12 +9,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/people"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/keyring"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/admin/people"
+	"github.com/ashhart/tf-starlight/internal/crypto/keyring"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // writeLock serialises connection writes so domain routing stays unambiguous.

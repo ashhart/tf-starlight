@@ -6,8 +6,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 const maxMembers = 20000

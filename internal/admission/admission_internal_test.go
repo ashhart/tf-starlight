@@ -9,9 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/levels"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/levels"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func execer(t *testing.T, pool *pgxpool.Pool) func(string, ...any) {

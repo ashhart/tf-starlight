@@ -18,9 +18,9 @@ import (
 	"github.com/crewjam/saml/xmlenc"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	samlsp "github.com/ashhart/TensorFold/starlight/internal/identity/saml"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/saml/samlfake"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	samlsp "github.com/ashhart/tf-starlight/internal/identity/saml"
+	"github.com/ashhart/tf-starlight/internal/identity/saml/samlfake"
 )
 
 type fixture struct {

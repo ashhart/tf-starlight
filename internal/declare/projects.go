@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
 )
 
 func (a *applier) projects(f *File) error {

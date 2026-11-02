@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/core"
+	"github.com/ashhart/tf-starlight/internal/connect/core"
 )
 
 // Run reports that this build was made without the tray.

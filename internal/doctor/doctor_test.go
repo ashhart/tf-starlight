@@ -6,12 +6,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/config"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/keyring"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/doctor"
-	"github.com/ashhart/TensorFold/starlight/internal/server"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/config"
+	"github.com/ashhart/tf-starlight/internal/crypto/keyring"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/doctor"
+	"github.com/ashhart/tf-starlight/internal/server"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func TestDoctorOnAFreshInstallation(t *testing.T) {

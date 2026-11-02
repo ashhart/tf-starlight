@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 // Subject names every scope one request counts against.

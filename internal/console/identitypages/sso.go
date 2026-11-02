@@ -6,12 +6,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
-	"github.com/ashhart/TensorFold/starlight/internal/console"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/presets"
-	samlsp "github.com/ashhart/TensorFold/starlight/internal/identity/saml"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/console"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/presets"
+	samlsp "github.com/ashhart/tf-starlight/internal/identity/saml"
 )
 
 type ssoRow struct {

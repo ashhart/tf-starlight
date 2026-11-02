@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/node/service"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/node/service"
 )
 
 func serviceCommand() *cli.Command {

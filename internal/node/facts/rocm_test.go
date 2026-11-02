@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // rocminfo returns a testdata sample: a fictional host in rocminfo's layout, with its trailing blanks stripped.

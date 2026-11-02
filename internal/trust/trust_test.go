@@ -6,9 +6,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/keyring"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
-	"github.com/ashhart/TensorFold/starlight/internal/trust"
+	"github.com/ashhart/tf-starlight/internal/crypto/keyring"
+	"github.com/ashhart/tf-starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/trust"
 )
 
 func TestRotationPublishesBeforeSigning(t *testing.T) {

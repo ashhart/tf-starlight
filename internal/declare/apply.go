@@ -11,8 +11,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/audit"
 )
 
 // Options control an apply; Secrets resolves credential references and defaults to Reference.

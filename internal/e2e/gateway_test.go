@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 func TestLocalFleetServesEveryProtocol(t *testing.T) {

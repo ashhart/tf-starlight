@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/providers"
 )
 
 var responseID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)

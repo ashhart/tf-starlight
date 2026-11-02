@@ -3,8 +3,8 @@ package fleet_test
 import (
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 func TestSharingAnIsolatedModelRestartsItsPromptCaches(t *testing.T) {

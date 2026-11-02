@@ -7,8 +7,8 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 func (a *applier) models(f *File) error {

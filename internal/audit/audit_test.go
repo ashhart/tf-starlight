@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func TestChainSurvivesConcurrencyAndDetectsTampering(t *testing.T) {

@@ -3,7 +3,7 @@ package declare
 import (
 	"fmt"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
 )
 
 func (a *applier) settings(f *File) error {

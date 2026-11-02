@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	samlsp "github.com/ashhart/TensorFold/starlight/internal/identity/saml"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
-	"github.com/ashhart/TensorFold/starlight/internal/web"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	samlsp "github.com/ashhart/tf-starlight/internal/identity/saml"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/web"
 )
 
 func (h *Handler) loginData(r *http.Request, returnTo string) (web.LoginPage, error) {

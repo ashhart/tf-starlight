@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
 )
 
 type ctxKey struct{}

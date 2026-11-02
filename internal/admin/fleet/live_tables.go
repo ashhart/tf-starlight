@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 // InFlight is one admitted request still running.

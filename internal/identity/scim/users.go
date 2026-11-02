@@ -8,8 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
 )
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {

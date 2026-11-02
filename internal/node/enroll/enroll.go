@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
-	"github.com/ashhart/TensorFold/starlight/internal/node/trust"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/node/trust"
 )
 
 var namePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)

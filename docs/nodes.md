@@ -102,14 +102,13 @@ in the `render` group (`SupplementaryGroups=render` in a drop-in); the agent fin
 
 ### Container
 
-[`deploy/node/container/Dockerfile`](../deploy/node/container/Dockerfile) builds the agent and installs a TensorFold
-release archive verified against the SHA-256 you pass in. The NVIDIA Container Toolkit supplies `libcuda.so.1` from the
-host driver; the archive embeds its CUDA kernels. Vision towers additionally need CUDA 13 cuBLASLt, so pass a CUDA 13
-runtime image as `BASE` for those deployments.
+[`deploy/node/container/Dockerfile`](../deploy/node/container/Dockerfile) builds the agent and installs the TensorFold
+release that [`engine.json`](../engine.json) pins, checked against its SHA-256. The NVIDIA Container Toolkit supplies
+`libcuda.so.1` from the host driver; the archive embeds its CUDA kernels. Vision towers additionally need CUDA 13
+cuBLASLt, so pass a CUDA 13 runtime image as `BASE` for those deployments.
 
 ```bash
-docker build -f deploy/node/container/Dockerfile --build-arg TENSORFOLD_VERSION=1.2.0 \
-  --build-arg TENSORFOLD_SHA256=<published archive sha256> -t starlight-node-cuda .
+docker build -f deploy/node/container/Dockerfile -t starlight-node-cuda .
 docker run --rm -v starlight-node:/var/lib/starlight-node starlight-node-cuda enroll --state-dir /var/lib/starlight-node \
   --server https://starlight.example.com:9443 --token sle_... --ca-sha256 <hex> --advertise gpu-01.example.com:7443
 docker run -d --name starlight-node --restart unless-stopped --gpus all --ipc host -p 7443:7443 \

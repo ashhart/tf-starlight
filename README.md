@@ -82,6 +82,15 @@ in version control.
 | Metrics | Every Prometheus series and its labels | [docs/metrics.md](docs/metrics.md) |
 | Qualification | What the tests prove and what still needs real hardware or tenants | [docs/qualification.md](docs/qualification.md) |
 
+## The TensorFold engine
+
+Starlight runs [TensorFold](https://github.com/ashhart/TensorFold) engines: every node needs TensorFold 1.2.0 or newer,
+and [`engine.json`](engine.json) pins the release Starlight is tested with, with each archive's SHA-256. CI fetches that
+release and runs the engine contract against it on Linux and macOS: the engine's version, and that `tensorfold serve`
+takes every flag a node passes, for each backend the binary serves. A daily job runs the same contract against
+TensorFold's newest release, so an engine change shows up before the pin moves. `scripts/fetch-engine.sh PLATFORM DIR`
+unpacks the pinned engine, and the node container image installs it the same way.
+
 ## Security posture
 
 - Identity comes only from a verified credential: an API key, a Connect token, a task token, or an IdP-issued JWT.
@@ -93,4 +102,5 @@ in version control.
 
 ## Licence
 
-Apache-2.0, as the rest of TensorFold. Third-party licences are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Apache-2.0, like TensorFold: see [LICENSE](LICENSE) and [NOTICE](NOTICE). Third-party licences are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/node/engine"
-	"github.com/ashhart/TensorFold/starlight/internal/node/nodetest"
+	"github.com/ashhart/tf-starlight/internal/node/engine"
+	"github.com/ashhart/tf-starlight/internal/node/nodetest"
 )
 
 func TestKeyForChoosesLeastPrivilege(t *testing.T) {

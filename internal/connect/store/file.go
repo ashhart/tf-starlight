@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fsutil"
+	"github.com/ashhart/tf-starlight/internal/connect/fsutil"
 )
 
 // File keeps secrets in a JSON file readable only by the user, locked against other Connect processes.

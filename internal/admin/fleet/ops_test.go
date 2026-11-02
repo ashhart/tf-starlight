@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/admin/keys"
-	"github.com/ashhart/TensorFold/starlight/internal/control"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/admin/keys"
+	"github.com/ashhart/tf-starlight/internal/control"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 func (r *rig) exec(sql string, args ...any) {

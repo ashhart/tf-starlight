@@ -5,10 +5,10 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
-	"github.com/ashhart/TensorFold/starlight/internal/console"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/console"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 type plansPage struct {

@@ -16,11 +16,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/ratelimit"
-	"github.com/ashhart/TensorFold/starlight/internal/trust"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/ratelimit"
+	"github.com/ashhart/tf-starlight/internal/trust"
 )
 
 // NodeCertValidity is how long node certificates last; nodes renew after two thirds.

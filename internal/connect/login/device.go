@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/oauth"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/connect/oauth"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 const deviceGrant = "urn:ietf:params:oauth:grant-type:device_code"

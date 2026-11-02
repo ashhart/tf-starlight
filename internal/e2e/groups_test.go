@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // spark presents a node as a GB10: CUDA on one GPU that shares the machine's memory, reachable for ranks on loopback.

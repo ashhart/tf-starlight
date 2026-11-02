@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 const deviceLifetime = 10 * time.Minute

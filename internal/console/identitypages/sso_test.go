@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/scim"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/scim"
 )
 
 var scimToken = regexp.MustCompile(`sls_[a-z2-7_]+`)

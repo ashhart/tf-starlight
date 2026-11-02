@@ -5,10 +5,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
-	"github.com/ashhart/TensorFold/starlight/internal/web"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/web"
 )
 
 // recoverPage shows a confirmation, so link scanners that fetch the URL cannot spend the code.

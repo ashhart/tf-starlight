@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/buildinfo"
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/buildinfo"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // Collect gathers every fact once; an agent that reports repeatedly uses a Collector.

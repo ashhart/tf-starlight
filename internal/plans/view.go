@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/ashhart/TensorFold/starlight/internal/authn"
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/principal"
-	"github.com/ashhart/TensorFold/starlight/internal/levels"
+	"github.com/ashhart/tf-starlight/internal/authn"
+	"github.com/ashhart/tf-starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/principal"
+	"github.com/ashhart/tf-starlight/internal/levels"
 )
 
 func (s *Service) get(w http.ResponseWriter, r *http.Request) {

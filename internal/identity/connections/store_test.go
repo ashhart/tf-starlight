@@ -13,11 +13,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/people"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/keyring"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/admin/people"
+	"github.com/ashhart/tf-starlight/internal/crypto/keyring"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func oidcInput(slug string, domains ...string) connections.Input {

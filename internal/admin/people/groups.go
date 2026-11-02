@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // GroupRow is one line of the group list.

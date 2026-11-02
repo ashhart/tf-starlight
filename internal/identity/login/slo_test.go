@@ -13,8 +13,8 @@ import (
 
 	crewsaml "github.com/crewjam/saml"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/saml/samlfake"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/saml/samlfake"
 )
 
 // samlLogoutConn is the harness SAML connection with "Sign out of the IdP too" switched on.

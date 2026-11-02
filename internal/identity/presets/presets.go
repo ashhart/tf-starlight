@@ -4,7 +4,7 @@ package presets
 import (
 	"sort"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // Field kinds tell forms how to render and parse a value.

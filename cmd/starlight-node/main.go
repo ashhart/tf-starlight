@@ -11,10 +11,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/buildinfo"
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/node/service"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/buildinfo"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/node/service"
+	"github.com/ashhart/tf-starlight/internal/node/state"
 )
 
 func main() {

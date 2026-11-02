@@ -12,12 +12,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/login"
-	"github.com/ashhart/TensorFold/starlight/internal/server"
-	"github.com/ashhart/TensorFold/starlight/internal/trust"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/login"
+	"github.com/ashhart/tf-starlight/internal/server"
+	"github.com/ashhart/tf-starlight/internal/trust"
 )
 
 func adminCmd() *cli.Command {

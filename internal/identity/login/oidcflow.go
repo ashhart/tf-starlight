@@ -7,11 +7,11 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/mapping"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/mapping"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 // start sends the browser to the connection's identity provider.

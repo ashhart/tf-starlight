@@ -19,9 +19,9 @@ import (
 	crewsaml "github.com/crewjam/saml"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	samlsp "github.com/ashhart/TensorFold/starlight/internal/identity/saml"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/saml/samlfake"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	samlsp "github.com/ashhart/tf-starlight/internal/identity/saml"
+	"github.com/ashhart/tf-starlight/internal/identity/saml/samlfake"
 )
 
 var sloURL = samlsp.SLOURL("https://starlight.example", "corp")

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 var devicePattern = regexp.MustCompile(`^(GPU-[0-9A-Za-z-]{4,64}|[0-9]{1,2})$`)

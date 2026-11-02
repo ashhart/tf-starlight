@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc/oidcfake"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc/oidcfake"
 )
 
 const (

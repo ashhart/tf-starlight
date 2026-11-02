@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 type authzRequest struct {

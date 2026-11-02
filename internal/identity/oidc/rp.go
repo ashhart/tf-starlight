@@ -13,7 +13,7 @@ import (
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // SigningAlgs are the only JWS algorithms Starlight accepts; none and HMAC are never allowed.

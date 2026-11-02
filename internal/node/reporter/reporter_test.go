@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
 )
 
 func client(t *testing.T, h http.HandlerFunc) *controlclient.Client {

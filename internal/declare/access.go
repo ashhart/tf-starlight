@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
 )
 
 func (a *applier) orgRoles(f *File) error {

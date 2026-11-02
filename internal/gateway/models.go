@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/catalog"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/catalog"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 type modelEntry struct {

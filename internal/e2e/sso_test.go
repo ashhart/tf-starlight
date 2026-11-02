@@ -17,13 +17,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/config"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc/oidcfake"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/scim"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/config"
+	"github.com/ashhart/tf-starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc/oidcfake"
+	"github.com/ashhart/tf-starlight/internal/identity/scim"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 var csrfField = regexp.MustCompile(`name="_csrf" value="([^"]+)"`)

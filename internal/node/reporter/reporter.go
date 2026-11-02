@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
 )
 
 // Reporter sends the newest stats report; stale reports are replaced, and reports during a backoff are dropped.

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/providers"
-	"github.com/ashhart/TensorFold/starlight/internal/routing"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/routing"
 )
 
 // Info is what policy needs from a request body.

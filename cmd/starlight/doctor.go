@@ -7,9 +7,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/doctor"
-	"github.com/ashhart/TensorFold/starlight/internal/server"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/doctor"
+	"github.com/ashhart/tf-starlight/internal/server"
 )
 
 func doctorCmd() *cli.Command {

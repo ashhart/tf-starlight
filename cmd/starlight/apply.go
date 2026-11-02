@@ -5,10 +5,10 @@ import (
 	"flag"
 	"os"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/fleet"
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/declare"
-	"github.com/ashhart/TensorFold/starlight/internal/server"
+	"github.com/ashhart/tf-starlight/internal/admin/fleet"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/declare"
+	"github.com/ashhart/tf-starlight/internal/server"
 )
 
 func applyCmd() *cli.Command {

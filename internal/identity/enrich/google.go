@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
 )
 
 // GroupScope is the read-only Directory API scope the service account is delegated.

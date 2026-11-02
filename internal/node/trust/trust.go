@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
 )
 
 // Trust kinds: the first three authenticate enrolment, workload is used for every connection afterwards.

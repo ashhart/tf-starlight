@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
 )
 
 func TestEveryPageRendersForAnOwner(t *testing.T) {

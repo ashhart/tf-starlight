@@ -3,8 +3,8 @@ package login
 import (
 	"net/http"
 
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/ratelimit"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/ratelimit"
 )
 
 // limiter slows floods per client network, counted across every Starlight instance.

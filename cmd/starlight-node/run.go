@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/node/agent"
-	"github.com/ashhart/TensorFold/starlight/internal/node/enroll"
-	"github.com/ashhart/TensorFold/starlight/internal/node/facts"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/node/agent"
+	"github.com/ashhart/tf-starlight/internal/node/enroll"
+	"github.com/ashhart/tf-starlight/internal/node/facts"
+	"github.com/ashhart/tf-starlight/internal/node/state"
 )
 
 type envList []string

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/catalog"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/catalog"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 type localCand struct {

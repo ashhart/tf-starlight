@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/node/engine"
+	"github.com/ashhart/tf-starlight/internal/node/engine"
 )
 
 // keyFor picks the least-privileged engine key: the full key only where the engine's scope rules demand it.

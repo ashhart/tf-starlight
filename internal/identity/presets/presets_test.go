@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 const tenant = "8d0c6f1e-2c43-4c2d-9a33-0b1c2d3e4f50"

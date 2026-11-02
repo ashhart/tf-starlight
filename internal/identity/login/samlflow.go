@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/mapping"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/mapping"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 // errReplay means an assertion or logout token was already used.

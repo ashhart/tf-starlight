@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 type memoryStatusEx struct {

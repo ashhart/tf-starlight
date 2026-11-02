@@ -1,0 +1,36 @@
+name: Newest TensorFold engine
+
+# Daily: the engine contract against TensorFold's newest release, so a change there shows before engine.json moves.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOFLAGS: -mod=readonly
+  GOTOOLCHAIN: local
+
+jobs:
+  contract:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache-dependency-path: go.sum
+      - name: fetch TensorFold's newest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          engine=$(scripts/fetch-engine.sh linux-x86_64 "$RUNNER_TEMP/tensorfold" latest)
+          echo "STARLIGHT_ENGINE=$engine" >> "$GITHUB_ENV"
+          "$engine" --version
+      - name: engine contract
+        run: go test -count=1 -run TestEngineContract -v ./internal/node/engine

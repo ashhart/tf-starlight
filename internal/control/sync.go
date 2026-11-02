@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 var reportable = map[string]bool{wire.StateStaging: true, wire.StateStarting: true, wire.StateReady: true, wire.StateDraining: true,

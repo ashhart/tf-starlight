@@ -10,17 +10,17 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/keyring"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/enrich"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/mapping"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc"
-	samlsp "github.com/ashhart/TensorFold/starlight/internal/identity/saml"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
-	"github.com/ashhart/TensorFold/starlight/internal/web"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/crypto/keyring"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/enrich"
+	"github.com/ashhart/tf-starlight/internal/identity/mapping"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc"
+	samlsp "github.com/ashhart/tf-starlight/internal/identity/saml"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/web"
 )
 
 // Config wires the login handlers to Starlight's shared services.

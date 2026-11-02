@@ -5,8 +5,8 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 // stats records each replica's live load for dashboards; a node can only report its own replicas.

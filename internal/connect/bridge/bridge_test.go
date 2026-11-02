@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/appkeys"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fakestarlight"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/store"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/tokens"
+	"github.com/ashhart/tf-starlight/internal/connect/appkeys"
+	"github.com/ashhart/tf-starlight/internal/connect/fakestarlight"
+	"github.com/ashhart/tf-starlight/internal/connect/store"
+	"github.com/ashhart/tf-starlight/internal/connect/tokens"
 )
 
 type fixture struct {

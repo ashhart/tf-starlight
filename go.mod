@@ -1,4 +1,4 @@
-module github.com/ashhart/TensorFold/starlight
+module github.com/ashhart/tf-starlight
 
 go 1.27.3
 

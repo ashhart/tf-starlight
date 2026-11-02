@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/core"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/managed"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/profile"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/store"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/connect/core"
+	"github.com/ashhart/tf-starlight/internal/connect/managed"
+	"github.com/ashhart/tf-starlight/internal/connect/profile"
+	"github.com/ashhart/tf-starlight/internal/connect/store"
+	"github.com/ashhart/tf-starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 var userCode = regexp.MustCompile(`\b[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}\b`)

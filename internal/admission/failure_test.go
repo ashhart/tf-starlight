@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/levels"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/levels"
 )
 
 func TestCallerLeavingDuringAdmissionLeavesNoLease(t *testing.T) {

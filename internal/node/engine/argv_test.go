@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil/fakeengine"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/testutil/fakeengine"
 )
 
 func TestArgsFromTypedSpecOnly(t *testing.T) {

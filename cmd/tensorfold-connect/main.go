@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/buildinfo"
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/core"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/tray"
+	"github.com/ashhart/tf-starlight/internal/buildinfo"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/connect/core"
+	"github.com/ashhart/tf-starlight/internal/connect/tray"
 )
 
 var (

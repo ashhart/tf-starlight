@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 func TestCatalogueActionsAreAudited(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/catalog"
+	"github.com/ashhart/tf-starlight/internal/catalog"
 )
 
 func TestEgressRefusesUnapprovedAndOffline(t *testing.T) {

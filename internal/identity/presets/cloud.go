@@ -1,7 +1,7 @@
 package presets
 
 import (
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // Entra SAML claim URIs, as Microsoft Entra ID issues them.

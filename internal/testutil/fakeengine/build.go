@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const pkg = "github.com/ashhart/TensorFold/starlight/internal/testutil/fakeengine/cmd/fake-tensorfold"
+const pkg = "github.com/ashhart/tf-starlight/internal/testutil/fakeengine/cmd/fake-tensorfold"
 
 var (
 	buildOnce sync.Once

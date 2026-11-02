@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
-	"github.com/ashhart/TensorFold/starlight/internal/node/trust"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/node/trust"
 )
 
 // TrustOf is the post-enrolment trust: the pinned workload CA and a control identity in the node's trust domain.

@@ -9,9 +9,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/setup"
-	"github.com/ashhart/TensorFold/starlight/internal/mdns"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/connect/setup"
+	"github.com/ashhart/tf-starlight/internal/mdns"
 )
 
 func bridgeCmd() *cli.Command {

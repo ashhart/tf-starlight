@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Starlight Node with the TensorFold CUDA engine; docs/nodes.md has the build and run commands.
+# Starlight Node with the TensorFold CUDA engine that engine.json pins; docs/nodes.md has the build and run commands.
 
 ARG BASE=ubuntu:24.04
 
@@ -12,19 +12,11 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/starlight-node ./c
 
 FROM ${BASE} AS engine
 ARG TARGETARCH
-ARG TENSORFOLD_VERSION=1.2.0
-ARG TENSORFOLD_SHA256
-RUN test -n "$TENSORFOLD_SHA256" || (echo "pass --build-arg TENSORFOLD_SHA256 with the archive's published SHA-256" && exit 1)
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
-RUN set -eu; \
-    case "$TARGETARCH" in amd64) arch=linux-x86_64 ;; arm64) arch=linux-aarch64 ;; *) echo "unsupported arch $TARGETARCH"; exit 1 ;; esac; \
-    name="tensorfold-${TENSORFOLD_VERSION}-${arch}"; \
-    curl -fsSL -o /tmp/engine.tar.gz "https://github.com/ashhart/TensorFold/releases/download/v${TENSORFOLD_VERSION}/${name}.tar.gz"; \
-    echo "${TENSORFOLD_SHA256}  /tmp/engine.tar.gz" | sha256sum -c -; \
-    mkdir -p /opt/tensorfold; \
-    tar -xzf /tmp/engine.tar.gz -C /opt/tensorfold --strip-components=1; \
-    rm /tmp/engine.tar.gz; \
-    /opt/tensorfold/bin/tensorfold-native --version
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl jq && rm -rf /var/lib/apt/lists/*
+COPY engine.json /src/engine.json
+COPY scripts/fetch-engine.sh /src/scripts/fetch-engine.sh
+RUN case "$TARGETARCH" in amd64) platform=linux-x86_64 ;; arm64) platform=linux-aarch64 ;; *) echo "unsupported arch $TARGETARCH"; exit 1 ;; esac; \
+    /src/scripts/fetch-engine.sh "$platform" /opt/tensorfold
 
 FROM ${BASE}
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* \

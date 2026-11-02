@@ -14,13 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/login"
-	"github.com/ashhart/TensorFold/starlight/internal/mdns"
-	"github.com/ashhart/TensorFold/starlight/internal/scheduler"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/login"
+	"github.com/ashhart/tf-starlight/internal/mdns"
+	"github.com/ashhart/tf-starlight/internal/scheduler"
 )
 
 const discoveryPath = discovery.Path

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 // TokenSource supplies access tokens and replaces one Starlight rejected.

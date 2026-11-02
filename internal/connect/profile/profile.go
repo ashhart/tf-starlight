@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fsutil"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/managed"
+	"github.com/ashhart/tf-starlight/internal/connect/fsutil"
+	"github.com/ashhart/tf-starlight/internal/connect/managed"
 )
 
 // HomeEnv overrides the configuration directory, for tests and for keeping separate profiles.

@@ -13,12 +13,12 @@ import (
 
 	"fyne.io/systray"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/bridge"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/core"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/login"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/setup"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/starlightapi"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/tokens"
+	"github.com/ashhart/tf-starlight/internal/connect/bridge"
+	"github.com/ashhart/tf-starlight/internal/connect/core"
+	"github.com/ashhart/tf-starlight/internal/connect/login"
+	"github.com/ashhart/tf-starlight/internal/connect/setup"
+	"github.com/ashhart/tf-starlight/internal/connect/starlightapi"
+	"github.com/ashhart/tf-starlight/internal/connect/tokens"
 )
 
 const maxModels = 24

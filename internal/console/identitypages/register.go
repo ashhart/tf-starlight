@@ -10,15 +10,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/keys"
-	"github.com/ashhart/TensorFold/starlight/internal/admin/people"
-	"github.com/ashhart/TensorFold/starlight/internal/admin/settings"
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
-	"github.com/ashhart/TensorFold/starlight/internal/console"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/scim"
+	"github.com/ashhart/tf-starlight/internal/admin/keys"
+	"github.com/ashhart/tf-starlight/internal/admin/people"
+	"github.com/ashhart/tf-starlight/internal/admin/settings"
+	"github.com/ashhart/tf-starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/console"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/scim"
 )
 
 //go:embed templates

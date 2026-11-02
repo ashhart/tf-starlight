@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
 )
 
 // The fixtures are split so repository secret scanners pass them; the guard sees the joined text.

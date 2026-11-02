@@ -34,7 +34,7 @@ if [ -e "$out" ]; then
 fi
 mkdir -p "$out"
 
-pkg="github.com/ashhart/TensorFold/starlight/internal/buildinfo"
+pkg="github.com/ashhart/tf-starlight/internal/buildinfo"
 ldflags="-s -w -X $pkg.Version=$version -X $pkg.Commit=$commit"
 host="$(go env GOOS)/$(go env GOARCH)"
 

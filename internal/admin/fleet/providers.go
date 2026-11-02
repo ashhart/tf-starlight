@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // ProviderKind is a supported provider API with its documented base URL; an empty default must be entered.

@@ -5,10 +5,10 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
-	"github.com/ashhart/TensorFold/starlight/internal/node/controlclient"
-	"github.com/ashhart/TensorFold/starlight/internal/node/state"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/node/controlclient"
+	"github.com/ashhart/tf-starlight/internal/node/state"
 )
 
 // NeedsRenewal reports whether the certificate is due: Starlight's renew_after passed or a third of its life is left.

@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/permit"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/crypto/permit"
+	"github.com/ashhart/tf-starlight/internal/crypto/pki"
 )
 
 // Nodes dispatches to replicas over mTLS, naming each node by SPIFFE ID and carrying a fresh permit.

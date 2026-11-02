@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admin/settings"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/admin/settings"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 // SettingsInput sets installation settings from configuration; nil fields stay as they are.

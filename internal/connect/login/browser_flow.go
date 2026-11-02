@@ -12,8 +12,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/oauth"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/connect/oauth"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 // Options tune a sign-in; zero values take Connect's defaults.

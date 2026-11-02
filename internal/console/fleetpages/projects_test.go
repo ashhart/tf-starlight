@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 var secretValue = regexp.MustCompile(`<p class="secret" aria-label="Secret value">([^<]+)</p>`)

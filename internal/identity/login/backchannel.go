@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 // backchannel is OIDC Back-Channel Logout: the IdP posts a signed logout token and Starlight ends matching sessions.

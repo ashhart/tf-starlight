@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // HubCache mirrors the engine's rule: HF_HUB_CACHE, else HF_HOME/hub, else ~/.cache/huggingface/hub.

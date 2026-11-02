@@ -9,13 +9,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ashhart/TensorFold/starlight/internal/audit"
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/mapping"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/session"
+	"github.com/ashhart/tf-starlight/internal/audit"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/mapping"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc"
+	"github.com/ashhart/tf-starlight/internal/identity/session"
 )
 
 // finish reads directory groups when needed, resolves the user, claims ownership for setup, then opens a session.

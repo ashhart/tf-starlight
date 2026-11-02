@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc/oidcfake"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc/oidcfake"
 )
 
 func owners(x *harness) int {

@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
 )
 
 // Finding names one kind of credential seen in a body; values are never returned.

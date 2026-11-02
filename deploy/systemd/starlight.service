@@ -1,6 +1,6 @@
 [Unit]
 Description=TensorFold Starlight
-Documentation=https://github.com/ashhart/TensorFold/tree/main/starlight/docs
+Documentation=https://github.com/ashhart/tf-starlight/tree/main/docs
 After=network-online.target
 Wants=network-online.target
 

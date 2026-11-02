@@ -8,10 +8,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/ashhart/TensorFold/starlight/internal/cli"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/core"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/tokens"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/cli"
+	"github.com/ashhart/tf-starlight/internal/connect/core"
+	"github.com/ashhart/tf-starlight/internal/connect/tokens"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 func loginCmd() *cli.Command {

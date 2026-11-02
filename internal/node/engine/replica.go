@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // Errors a proxy gets when it cannot admit a request to a replica.

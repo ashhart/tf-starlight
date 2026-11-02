@@ -22,8 +22,8 @@ import (
 	crewsaml "github.com/crewjam/saml"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // Metadata refresh policy for IdPs configured by URL.

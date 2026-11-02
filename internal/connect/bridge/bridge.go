@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/appkeys"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/profile"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/starlightapi"
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/connect/appkeys"
+	"github.com/ashhart/tf-starlight/internal/connect/profile"
+	"github.com/ashhart/tf-starlight/internal/connect/starlightapi"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 // Config wires the endpoint to Starlight and to the local app registry.

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // amdGPUs lists the GPU agents rocminfo reports, less any the agent's own HIP device list withholds from Starlight.

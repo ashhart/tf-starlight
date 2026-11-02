@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/console"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/console"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // editForm is a connection's stored settings as form values; secrets are never filled in.

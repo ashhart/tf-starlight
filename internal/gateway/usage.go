@@ -3,8 +3,8 @@ package gateway
 import (
 	"encoding/json"
 
-	"github.com/ashhart/TensorFold/starlight/internal/admission"
-	"github.com/ashhart/TensorFold/starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/providers"
 )
 
 type openAIUsage struct {

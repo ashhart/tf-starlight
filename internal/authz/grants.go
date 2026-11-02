@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/db"
 )
 
 // Grants are a principal's effective roles, loaded once per request.

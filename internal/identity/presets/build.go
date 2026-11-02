@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // Values are form inputs keyed by field name.

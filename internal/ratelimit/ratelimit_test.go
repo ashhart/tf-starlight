@@ -13,7 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func TestInstancesShareOneBudget(t *testing.T) {

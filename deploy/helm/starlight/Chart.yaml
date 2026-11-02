@@ -4,7 +4,7 @@ description: TensorFold Starlight, one governed endpoint for an organisation's p
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-home: https://github.com/ashhart/TensorFold
+home: https://github.com/ashhart/tf-starlight
 sources:
-  - https://github.com/ashhart/TensorFold/tree/main/starlight
+  - https://github.com/ashhart/tf-starlight
 keywords: [tensorfold, inference, gateway, sso]

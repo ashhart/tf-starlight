@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 // Client is a built-in public client; none has a secret, so PKCE or the device grant is mandatory.

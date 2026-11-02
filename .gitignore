@@ -1,0 +1,6 @@
+/bin/
+/dist/
+*.test
+coverage.out
+/deploy/compose/.env
+/deploy/compose/secrets/

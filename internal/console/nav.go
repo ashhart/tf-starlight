@@ -3,7 +3,7 @@ package console
 import (
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/authz"
+	"github.com/ashhart/tf-starlight/internal/authz"
 )
 
 type navItem struct {

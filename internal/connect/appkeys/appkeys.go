@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fsutil"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/connect/fsutil"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
 )
 
 // App is one local application allowed to use the local endpoint; only its key's hash is kept.

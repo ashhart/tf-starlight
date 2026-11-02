@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/profile"
-	"github.com/ashhart/TensorFold/starlight/internal/crypto/secret"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/connect/profile"
+	"github.com/ashhart/tf-starlight/internal/crypto/secret"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 type code struct {

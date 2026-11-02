@@ -65,6 +65,11 @@ chat model, 401 for a bad key, and one usage row per request all worked. The eng
 metrics reads under the scoped `starlight-read` key, and the console's dashboard showed live decode speeds of 230 to 408
 tokens a second with four requests running.
 
+CI also runs the engine contract (`TestEngineContract` in `internal/node/engine`) against the TensorFold release that
+[`engine.json`](../engine.json) pins, on Linux and macOS, and every day against TensorFold's newest release. It checks
+the engine's version and that `tensorfold serve` takes every flag a node passes, for each backend the binary serves,
+stopping short of loading a model.
+
 ### Deployment assets
 
 | Tool | Version | Result |

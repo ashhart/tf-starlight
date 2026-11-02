@@ -12,7 +12,7 @@ import (
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
 )
 
 // Errors returned by bearer and logout verification.

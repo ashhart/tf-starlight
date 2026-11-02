@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // Subscription is a seat-based frontier product the organisation pays for, such as an assistant or coding tool licence.

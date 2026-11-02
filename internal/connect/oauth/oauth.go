@@ -14,7 +14,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 // Scope is what Connect asks Starlight for.

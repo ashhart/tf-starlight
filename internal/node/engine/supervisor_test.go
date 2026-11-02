@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/node/artifacts"
-	"github.com/ashhart/TensorFold/starlight/internal/node/engine"
-	"github.com/ashhart/TensorFold/starlight/internal/node/nodetest"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil/fakeengine"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/node/artifacts"
+	"github.com/ashhart/tf-starlight/internal/node/engine"
+	"github.com/ashhart/tf-starlight/internal/node/nodetest"
+	"github.com/ashhart/tf-starlight/internal/testutil/fakeengine"
 )
 
 func TestMain(m *testing.M) {

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/directory"
+	"github.com/ashhart/tf-starlight/internal/identity/directory"
 )
 
 // userDoc is the working SCIM document: stored attributes with the authoritative columns laid over them.

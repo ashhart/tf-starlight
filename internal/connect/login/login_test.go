@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fakestarlight"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/oauth"
+	"github.com/ashhart/tf-starlight/internal/connect/fakestarlight"
+	"github.com/ashhart/tf-starlight/internal/connect/oauth"
 )
 
 func userinfo(t *testing.T, f *fakestarlight.Starlight, token string) int {

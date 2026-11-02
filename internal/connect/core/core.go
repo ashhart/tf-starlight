@@ -15,16 +15,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/appkeys"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/bridge"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/login"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/managed"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/profile"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/setup"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/starlightapi"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/store"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/tokens"
-	"github.com/ashhart/TensorFold/starlight/internal/discovery"
+	"github.com/ashhart/tf-starlight/internal/connect/appkeys"
+	"github.com/ashhart/tf-starlight/internal/connect/bridge"
+	"github.com/ashhart/tf-starlight/internal/connect/login"
+	"github.com/ashhart/tf-starlight/internal/connect/managed"
+	"github.com/ashhart/tf-starlight/internal/connect/profile"
+	"github.com/ashhart/tf-starlight/internal/connect/setup"
+	"github.com/ashhart/tf-starlight/internal/connect/starlightapi"
+	"github.com/ashhart/tf-starlight/internal/connect/store"
+	"github.com/ashhart/tf-starlight/internal/connect/tokens"
+	"github.com/ashhart/tf-starlight/internal/discovery"
 )
 
 // ErrNoServer means no Starlight address is configured yet.

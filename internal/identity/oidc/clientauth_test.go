@@ -19,9 +19,9 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/oidc/oidcfake"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc"
+	"github.com/ashhart/tf-starlight/internal/identity/oidc/oidcfake"
 )
 
 func keyPair(t *testing.T) (certPEM, keyPEM string, cert *x509.Certificate) {

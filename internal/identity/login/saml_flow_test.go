@@ -10,9 +10,9 @@ import (
 
 	crewsaml "github.com/crewjam/saml"
 
-	"github.com/ashhart/TensorFold/starlight/internal/identity/connections"
-	samlsp "github.com/ashhart/TensorFold/starlight/internal/identity/saml"
-	"github.com/ashhart/TensorFold/starlight/internal/identity/saml/samlfake"
+	"github.com/ashhart/tf-starlight/internal/identity/connections"
+	samlsp "github.com/ashhart/tf-starlight/internal/identity/saml"
+	"github.com/ashhart/tf-starlight/internal/identity/saml/samlfake"
 )
 
 func (x *harness) samlConn(idp *samlfake.IdP, allowInitiated bool) connections.Connection {

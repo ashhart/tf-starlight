@@ -16,7 +16,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ashhart/TensorFold/starlight/internal/httpx"
+	"github.com/ashhart/tf-starlight/internal/httpx"
 )
 
 //go:embed templates/*.html

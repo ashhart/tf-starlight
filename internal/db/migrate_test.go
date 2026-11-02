@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/testutil"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/testutil"
 )
 
 func TestMigrationsApplyAndAreIdempotent(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/connect/fakestarlight"
-	"github.com/ashhart/TensorFold/starlight/internal/connect/store"
+	"github.com/ashhart/tf-starlight/internal/connect/fakestarlight"
+	"github.com/ashhart/tf-starlight/internal/connect/store"
 )
 
 func manager(t *testing.T, f *fakestarlight.Starlight) (*Manager, store.Store) {

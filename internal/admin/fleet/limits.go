@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ashhart/TensorFold/starlight/internal/db"
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // LimitKinds lists every limit kind in display order; cost kinds are in micro-dollars.

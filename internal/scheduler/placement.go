@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/ashhart/TensorFold/starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
 
 // seat is one node's part of a replica being placed and the GPUs it will pin there.

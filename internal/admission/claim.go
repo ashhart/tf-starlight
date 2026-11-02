@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/ashhart/TensorFold/starlight/internal/ids"
-	"github.com/ashhart/TensorFold/starlight/internal/routing"
+	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/routing"
 )
 
 // claimTries bounds how many targets one attempt tries when other gateways fill them first.
