@@ -70,7 +70,9 @@ tokens a second with four requests running.
 CI also runs the engine contract (`TestEngineContract` in `internal/node/engine`) against the TensorFold release that
 [`engine.json`](../engine.json) pins, on Linux and macOS, and every day against TensorFold's newest release. It checks
 the engine's version and that `tensorfold serve` takes every flag a node passes, for each backend the binary serves,
-stopping short of loading a model.
+stopping short of loading a model. That covers `--ssd-experts`, `--ple-on-ssd`, `--learn-conversations`, `--learn-dir`,
+`--learn-gib` and `--learn-daily-gib` on TensorFold 1.2.1 and 1.2.2 (5 November 2026), and that a Linux engine still
+refuses the two SSD flags. No suite has run them with a real model: the Metal gate below covers that.
 
 ### Deployment assets
 
@@ -223,6 +225,10 @@ On a Mac Studio with Apple silicon: install `starlight-node` as a LaunchDaemon f
 deploy a checkpoint the engine qualifies on Metal, then confirm the replica becomes ready, the engine reports the Metal
 backend, and its decode speed matches the same engine started from a login session on the same machine. Reboot without
 logging in and confirm the replica returns. Check `pmset -g assertions` shows the agent's assertion.
+
+Then deploy Flash Next with `ssd_experts_gib` and `ple_on_ssd`, and a family that keeps conversations with
+`learn_conversations`. Confirm the replica starts on less memory, a conversation's next turn resumes after restarting the
+agent, and its reply matches a fresh prompt.
 
 ### NVIDIA B300 or GB300 in the CUDA container
 

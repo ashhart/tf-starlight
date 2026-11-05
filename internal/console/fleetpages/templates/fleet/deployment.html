@@ -44,6 +44,9 @@
 <div><label for="max_tokens">Output cap, tokens</label><input id="max_tokens" name="max_tokens" type="text" inputmode="numeric"{{with $s.MaxTokens}} value="{{.}}"{{end}}></div>
 <div><label for="prompt_cache_gib">Prompt cache, GiB</label><input id="prompt_cache_gib" name="prompt_cache_gib" type="text" inputmode="numeric"{{with $s.PromptCacheGiB}} value="{{.}}"{{end}}></div>
 <div><label for="prompt_cache">Prompt states</label><select id="prompt_cache" name="prompt_cache"><option value=""{{if ne $s.PromptCache "off"}} selected{{end}}>kept between requests</option><option value="off"{{if eq $s.PromptCache "off"}} selected{{end}}>off, for isolated projects</option></select></div>
+<div><label for="learn_gib">Conversations on disk, GiB</label><input id="learn_gib" name="learn_gib" type="text" inputmode="numeric"{{with $s.LearnGiB}} value="{{.}}"{{end}} placeholder="engine default"></div>
+<div><label for="learn_daily_gib">Conversation writes a day, GiB</label><input id="learn_daily_gib" name="learn_daily_gib" type="text" inputmode="numeric"{{with $s.LearnDailyGiB}} value="{{.}}"{{end}} placeholder="engine default"></div>
+<div><label for="ssd_experts_gib">Experts in memory from SSD, GiB</label><input id="ssd_experts_gib" name="ssd_experts_gib" type="text" inputmode="numeric"{{with $s.SSDExpertsGiB}} value="{{.}}"{{end}} placeholder="all in memory"></div>
 <div><label for="memory_gib">Memory to reserve, GiB</label><input id="memory_gib" name="memory_gib" type="text" inputmode="numeric"{{with $s.MemoryGiB}} value="{{.}}"{{end}}></div>
 <div><label for="gpus">GPUs per node</label><input id="gpus" name="gpus" type="text" inputmode="numeric"{{with $s.GPUs}} value="{{.}}"{{end}} placeholder="1"></div>
 <div><label for="nodes">Nodes per replica</label><input id="nodes" name="nodes" type="text" inputmode="numeric"{{with $s.Nodes}} value="{{.}}"{{end}} placeholder="1"></div>
@@ -52,6 +55,9 @@
 <p class="help">Tensor parallel runs one rank on each GPU of a replica, on one node or across several; rank 0 serves.</p>
 <label class="check"><input type="checkbox" name="vision"{{if $s.Vision}} checked{{end}}> Accept images</label>
 <label class="check"><input type="checkbox" name="no_drafts"{{if $s.NoDrafts}} checked{{end}}> Turn off speculative drafts</label>
+<label class="check"><input type="checkbox" name="learn_conversations"{{if $s.LearnConversations}} checked{{end}}> Keep conversations on disk</label>
+<label class="check"><input type="checkbox" name="ple_on_ssd"{{if $s.PLEOnSSD}} checked{{end}}> Read n-gram tables from SSD</label>
+<p class="help">Experts and n-gram tables on SSD let Flash Next run on a Mac with less memory than the checkpoint needs, and need the metal backend. Conversations on disk stay in the replica's directory on the node, unencrypted, until the replica is removed.</p>
 </fieldset>
 {{template "artifact" ($p.Artifact "drafter")}}
 <fieldset><legend>Placement and scaling</legend>
@@ -74,6 +80,7 @@
 <dt>Reasoning effort</dt><dd>{{or $s.ReasoningEffort "engine default"}}</dd><dt>Memory</dt><dd>{{if $s.MemoryGiB}}{{$s.MemoryGiB}} GiB{{else}}engine default{{end}}</dd>
 <dt>GPUs per replica</dt><dd>{{if $s.GPUs}}{{$s.GPUs}}{{else}}1{{end}} on each of {{if $s.Nodes}}{{$s.Nodes}}{{else}}1{{end}} node{{if gt $s.Nodes 1}}s{{end}}{{with $s.TensorParallel}}, tensor parallel {{.}}{{end}}</dd>
 <dt>Images</dt><dd>{{if $s.Vision}}yes{{else}}no{{end}}</dd><dt>Speculative drafts</dt><dd>{{if $s.NoDrafts}}off{{else}}on{{end}}</dd>
+<dt>Conversations on disk</dt><dd>{{if $s.LearnConversations}}yes{{else}}no{{end}}</dd><dt>Experts and n-gram tables</dt><dd>{{with $s.SSDExpertsGiB}}{{.}} GiB of experts read from SSD{{else}}experts in memory{{end}}, {{if $s.PLEOnSSD}}tables read from SSD{{else}}tables in memory{{end}}</dd>
 <dt>Selector</dt><dd class="mono">{{or $p.Selector "any node in the pool"}}</dd></dl>{{end}}
 </section>
 

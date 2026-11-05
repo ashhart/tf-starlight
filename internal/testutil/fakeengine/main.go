@@ -88,10 +88,11 @@ func serve(model string, args []string, stderr io.Writer) int {
 	port := fs.Int("port", 8080, "")
 	name := fs.String("name", "", "")
 	keyFile := fs.String("api-key-file", "", "")
-	for _, f := range []string{"backend", "context", "parallel", "kv-cache", "reasoning-effort", "thinking-budget", "max-tokens", "prompt-cache-gib", "drafter"} {
+	for _, f := range []string{"backend", "context", "parallel", "kv-cache", "reasoning-effort", "thinking-budget", "max-tokens", "prompt-cache-gib", "drafter",
+		"ssd-experts", "learn-dir", "learn-gib", "learn-daily-gib"} {
 		fs.String(f, "", "")
 	}
-	for _, f := range []string{"no-update-check", "vision", "no-drafts"} {
+	for _, f := range []string{"no-update-check", "vision", "no-drafts", "ple-on-ssd", "learn-conversations"} {
 		fs.Bool(f, false, "")
 	}
 	if err := fs.Parse(args); err != nil {

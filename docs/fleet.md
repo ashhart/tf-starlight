@@ -36,6 +36,11 @@ fields only, so there is no way to pass an arbitrary flag.
 | `prompt_cache` | `--prompt-cache-gib 0` when `off` | `shared` (the default) or `off`, which keeps no prompt states; see [prompt caches](#prompt-caches) |
 | `vision` | `--vision` | boolean |
 | `no_drafts` | `--no-drafts` | boolean |
+| `ssd_experts_gib` | `--ssd-experts` | 0 to 4,096; needs `backend: metal`; see [weights on SSD](#weights-on-ssd) |
+| `ple_on_ssd` | `--ple-on-ssd` | boolean; needs `backend: metal` |
+| `learn_conversations` | `--learn-conversations` and `--learn-dir` | boolean; `metal`, `cuda` or no `backend`, not with `prompt_cache: off` or `tensor_parallel`; see [conversations on disk](#conversations-on-disk) |
+| `learn_gib` | `--learn-gib` | 0 to 65,536; needs `learn_conversations`; 0 keeps the engine's default of 32 GiB |
+| `learn_daily_gib` | `--learn-daily-gib` | 0 to 65,536; needs `learn_conversations`; 0 keeps the engine's default of 32 GiB a day |
 | `memory_gib` | none | Memory the replica needs, split evenly over its nodes: node memory on Macs and GB10s, and an even part of each node's share per GPU on nodes with dedicated GPU memory; 0 skips the check |
 | `gpus` | none | 0 to 16; GPUs one replica holds on each node with dedicated GPU memory (0 means 1) |
 | `nodes` | none | 0 to 16; nodes one replica spans (0 means 1); above 1 needs `tensor_parallel` |
@@ -129,6 +134,30 @@ project is granted; when no such deployment exists, its requests answer `503 no_
 providers are unaffected. Granting such a model to another project, or withdrawing it from its isolated project,
 restarts its replicas that keep prompt states, so no prefix crosses over. Turning isolation on protects requests from
 then on; to clear prompt states already cached, restart the deployments it now avoids.
+
+### Weights on SSD
+
+`ple_on_ssd` leaves a checkpoint's n-gram tables on disk and reads their rows as needed. `ssd_experts_gib` leaves its
+routed experts on disk too and streams them into a memory pool of that many GiB, which must hold one layer's experts.
+Together they let Flash Next (`qwen4_exp`) run on a Mac with less memory than the checkpoint needs, with the same reply
+tokens. Set `memory_gib` to what the replica still needs in memory, so placement finds it room.
+
+Only the engine's macOS build takes these flags, so Starlight requires `backend: metal` and places such a replica only on
+Macs. There, other model families refuse them at start, and the replica shows the engine's message.
+
+### Conversations on disk
+
+`learn_conversations` has the engine write the prompt states it keeps in memory to disk as well, so a conversation's next
+turn can resume after a restart or an eviction instead of reading its whole prompt again. Replies do not change. The
+engine keeps Qwen3.8-27B, Nemotron, Flash Next and GLM-5.3-Flash on one Mac, and Nemotron, the Qwen3.5 hybrids and Flash
+Next on CUDA; other families refuse at start, and the replica shows the engine's message. Past `learn_gib` on disk, or
+`learn_daily_gib` written in a day, a state stays in memory only. The engine also keeps 4 GiB of the disk free.
+
+The node gives each replica its own directory for these states, `learned` inside the replica's directory in the private
+state directory. They survive an engine crash and a restart of the agent or the machine. They are removed with the
+replica, so a new revision, a move to another node, or the restart that a change of grant causes starts empty, and
+[`isolate_prompt_cache`](#prompt-caches) keeps its promise. Plan for prompts on the node's disk: see
+[security.md](security.md#node-to-engine).
 
 ### Rollouts and failures
 

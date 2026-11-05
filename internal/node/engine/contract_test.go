@@ -80,15 +80,22 @@ func TestEngineContract(t *testing.T) {
 			}
 		}
 	}
+	if runtime.GOOS != "darwin" {
+		for _, spec := range []wire.Spec{{SSDExpertsGiB: 16}, {PLEOnSSD: true}} {
+			if out, took := parsesServe(t, bin, Args(spec, model, "", "contract", keys.File), model); took {
+				t.Errorf("a %s engine now takes %v; let wire.Spec allow it there, since it says only metal does:\n%s", runtime.GOOS, spec, out)
+			}
+		}
+	}
 	want := map[string][]string{"darwin": {"metal"}, "linux": {"cuda", "hip"}}[runtime.GOOS]
 	if len(want) > 0 && !slices.ContainsFunc(want, func(b string) bool { return slices.Contains(served, b) }) {
 		t.Errorf("the engine serves backends %q, none of %q that a %s node runs", served, want, runtime.GOOS)
 	}
 }
 
-// variants turns on each optional field a node passes as a flag, one at a time and then together.
+// variants turns on each optional field a node passes as a flag, alone and then together, where the backend takes it.
 func variants(backend string) map[string]wire.Spec {
-	return map[string]wire.Spec{
+	out := map[string]wire.Spec{
 		"context": {Backend: backend, Context: 8192}, "parallel": {Backend: backend, Parallel: 4},
 		"thinking budget": {Backend: backend, ThinkingBudget: 2048}, "max tokens": {Backend: backend, MaxTokens: 4096},
 		"prompt cache size": {Backend: backend, PromptCacheGiB: 8}, "prompt cache off": {Backend: backend, PromptCache: "off"},
@@ -98,6 +105,16 @@ func variants(backend string) map[string]wire.Spec {
 		"everything": {Backend: backend, Context: 8192, Parallel: 4, ThinkingBudget: 2048, MaxTokens: 4096, PromptCacheGiB: 8,
 			KVCache: "fp8", ReasoningEffort: "xhigh", Vision: true},
 	}
+	if backend != "hip" {
+		out["conversations on disk"] = wire.Spec{Backend: backend, LearnConversations: true}
+		out["conversations on disk, limited"] = wire.Spec{Backend: backend, LearnConversations: true, LearnGiB: 64, LearnDailyGiB: 128}
+	}
+	if backend == "metal" {
+		out["experts on SSD"] = wire.Spec{Backend: backend, SSDExpertsGiB: 16}
+		out["n-gram tables on SSD"] = wire.Spec{Backend: backend, PLEOnSSD: true}
+		out["everything on SSD"] = wire.Spec{Backend: backend, SSDExpertsGiB: 16, PLEOnSSD: true, LearnConversations: true}
+	}
+	return out
 }
 
 // parsesServe reports whether the engine took every flag in argv and went on to look for the missing model.

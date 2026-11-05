@@ -71,6 +71,11 @@ request's classification. For a tensor-parallel group that spans nodes, every me
 Anyone with administrator rights on a node can read its key files and its traffic. Run nodes on managed machines, and
 keep the network between the nodes of a pool that runs rank groups private to that pool.
 
+A deployment with `learn_conversations` keeps prompt states on the node's disk, without encryption of their own. They sit
+in the replica's directory inside the private state directory, and they are removed with the replica; when a machine has
+to hold no prompts at rest, leave the setting off or use full-disk encryption. A removed node's disk keeps whatever a
+replica had not yet cleared, so wipe it as you would any disk that held prompts.
+
 ## Starlight to frontier providers
 
 | Threat | Control | Code |

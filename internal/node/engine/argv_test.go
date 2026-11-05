@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
@@ -30,6 +31,21 @@ func TestArgsFromTypedSpecOnly(t *testing.T) {
 	minimal := Args(wire.Spec{Model: wire.Artifact{Kind: "path", Path: "/m"}}, "/m", "", "m", "/k")
 	if len(minimal) != 11 {
 		t.Fatalf("zero-valued fields must add no flags: %q", minimal)
+	}
+}
+
+func TestArgsLeaveWeightsAndConversationsOnDisk(t *testing.T) {
+	spec := wire.Spec{Model: wire.Artifact{Kind: "path", Path: "/m"}, Backend: "metal", SSDExpertsGiB: 16, PLEOnSSD: true, LearnConversations: true,
+		LearnGiB: 64, LearnDailyGiB: 128}
+	if err := spec.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	got := Args(spec, "/m", "", "m", filepath.Join(dir, "engine.keys"))
+	want := []string{"--backend", "mlx", "--ssd-experts", "16", "--learn-gib", "64", "--learn-daily-gib", "128", "--ple-on-ssd",
+		"--learn-conversations", "--learn-dir", filepath.Join(dir, LearnedDir)}
+	if !reflect.DeepEqual(got[11:], want) {
+		t.Fatalf("args\n got %q\nwant %q", got[11:], want)
 	}
 }
 

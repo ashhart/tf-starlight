@@ -69,6 +69,27 @@ models:
           tensor_parallel: glm
           memory_gib: 360
           context: 245760
+  - name: team/flash-next
+    display_name: Flash Next
+    description: Larger than the Mac it runs on, so experts and n-gram tables stay on SSD; conversations survive a restart.
+    route_policy: local_only
+    everyone: false
+    deployments:
+      - name: flash-next-mac
+        pool: mac
+        mode: warm
+        spec:
+          model:
+            kind: hf
+            repo: example-org/flash-next-mlx
+            revision: fedcba9876543210fedcba9876543210fedcba98
+          backend: metal
+          memory_gib: 96
+          ssd_experts_gib: 16
+          ple_on_ssd: true
+          learn_conversations: true
+          learn_gib: 64
+          learn_daily_gib: 128
   - name: team/embed
     kind: embedding
     route_policy: local_only

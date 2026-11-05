@@ -12,6 +12,12 @@
   GO-2026-4753 (CVE-2026-33487): an XML signature listing more than one reference was checked against the wrong one, so a
   SAML response could be accepted without a valid signature over its contents. Anyone running an earlier commit with a
   SAML connection should update.
+- A deployment can set `ssd_experts_gib` and `ple_on_ssd`, which let Flash Next run on a Mac with less memory than its
+  checkpoint needs, and `learn_conversations` with `learn_gib` and `learn_daily_gib`, which keep conversations on disk
+  so they resume after a restart. [docs/fleet.md](docs/fleet.md#deployments) has the backends and bounds of each. A
+  replica's saved conversations stay in its directory on the node and leave with it.
+- An agent that starts after a crash removes the directories of replicas it is no longer assigned, and stopping the
+  agent waits for each replica's directory to be cleared.
 - `starlight-node enroll` works as Starlight prints it. With no `--advertise` it sent an empty address, which Starlight
   refused, so every enrolment needed the flag. It now reports the host name and port 7443 until `run` reports its own.
 - A release workflow builds every binary, image and chart from a `v*` tag, with checksums and build provenance, and a manual

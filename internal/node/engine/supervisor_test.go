@@ -278,3 +278,59 @@ func TestNoReportWhenNothingIsReady(t *testing.T) {
 		t.Fatalf("sent %d reports with no ready replica", sent)
 	}
 }
+
+// TestConversationsOnDiskLastAsLongAsTheReplica keeps them through an agent restart and removes them with the replica.
+func TestConversationsOnDiskLastAsLongAsTheReplica(t *testing.T) {
+	id := ids.New()
+	asg := nodetest.Assignment(id, "m", nodetest.ModelDir(t), 1, 1)
+	asg.Spec.LearnConversations = true
+	bin := fakeengine.Binary(t)
+	root := t.TempDir()
+	start := func() *engine.Supervisor {
+		sup, err := engine.New(engine.Config{Engine: bin, Root: root, Stager: &artifacts.Stager{Engine: bin, ModelsDir: t.TempDir()},
+			StartupTimeout: 15 * time.Second, DrainTimeout: time.Second, StopGrace: 5 * time.Second})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sup
+	}
+	ready := func(sup *engine.Supervisor) {
+		t.Helper()
+		sup.Apply([]wire.Assignment{asg})
+		waitFor(t, sup, 15*time.Second, func(st []wire.ReplicaStatus) bool { return len(st) == 1 && st[0].State == wire.StateReady })
+	}
+	stop := func(sup *engine.Supervisor) {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		sup.Shutdown(ctx)
+	}
+	saved := filepath.Join(root, id, engine.LearnedDir, "state")
+	sup := start()
+	ready(sup)
+	if err := os.MkdirAll(filepath.Dir(saved), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(saved, []byte("kept"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stop(sup)
+	if _, err := os.Stat(saved); err != nil {
+		t.Fatalf("the agent's shutdown lost the replica's conversations: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, id, "engine.keys")); !os.IsNotExist(err) {
+		t.Fatalf("the agent's shutdown left the engine's keys behind: %v", err)
+	}
+	sup = start()
+	ready(sup)
+	if _, err := os.Stat(saved); err != nil {
+		t.Fatalf("a restarted agent lost the replica's conversations: %v", err)
+	}
+	stop(sup)
+	sup = start()
+	defer stop(sup)
+	sup.Apply(nil)
+	if _, err := os.Stat(filepath.Join(root, id)); !os.IsNotExist(err) {
+		t.Fatalf("a replica no longer assigned kept its directory: %v", err)
+	}
+}

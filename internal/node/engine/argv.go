@@ -15,6 +15,9 @@ import (
 
 var servedPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$`)
 
+// LearnedDir is where a replica keeps conversations on disk, inside the private state directory.
+const LearnedDir = "learned"
+
 // BackendFlag maps Starlight's backend names to the engine's --backend values.
 func BackendFlag(b string) string {
 	switch b {
@@ -40,7 +43,8 @@ func Args(spec wire.Spec, model, drafter, served, keyFile string) []string {
 		v    int
 	}{
 		{"--context", spec.Context}, {"--parallel", spec.Parallel}, {"--thinking-budget", spec.ThinkingBudget},
-		{"--max-tokens", spec.MaxTokens}, {"--prompt-cache-gib", spec.PromptCacheGiB},
+		{"--max-tokens", spec.MaxTokens}, {"--prompt-cache-gib", spec.PromptCacheGiB}, {"--ssd-experts", spec.SSDExpertsGiB},
+		{"--learn-gib", spec.LearnGiB}, {"--learn-daily-gib", spec.LearnDailyGiB},
 	}
 	for _, f := range ints {
 		if f.v > 0 {
@@ -61,6 +65,12 @@ func Args(spec wire.Spec, model, drafter, served, keyFile string) []string {
 	}
 	if spec.NoDrafts {
 		a = append(a, "--no-drafts")
+	}
+	if spec.PLEOnSSD {
+		a = append(a, "--ple-on-ssd")
+	}
+	if spec.LearnConversations {
+		a = append(a, "--learn-conversations", "--learn-dir", filepath.Join(filepath.Dir(keyFile), LearnedDir))
 	}
 	if drafter != "" {
 		a = append(a, "--drafter", drafter)

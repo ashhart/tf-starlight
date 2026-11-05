@@ -111,15 +111,16 @@ func TestExampleAppliesOnceAndThenIsANoOp(t *testing.T) {
 		}
 	}
 	for sql, want := range map[string]int{
-		"SELECT count(*) FROM providers WHERE credential IS NOT NULL":                                          2,
-		"SELECT count(*) FROM deployments WHERE status = 'active'":                                             3,
-		"SELECT count(*) FROM deployments WHERE spec->>'tensor_parallel' = 'glm' AND (spec->>'gpus')::int = 2": 1,
-		"SELECT count(*) FROM model_grants WHERE project_id IS NULL":                                           2,
-		"SELECT count(*) FROM role_bindings WHERE project_id IS NULL":                                          2,
-		"SELECT count(*) FROM role_bindings WHERE project_id IS NOT NULL":                                      3,
-		"SELECT count(*) FROM limits":                                                                          4,
-		"SELECT count(*) FROM audit_events WHERE actor_type <> 'operator'":                                     0,
-		"SELECT count(*) FROM settings WHERE org_name = 'Example Corp'":                                        1,
+		"SELECT count(*) FROM providers WHERE credential IS NOT NULL":                                                      2,
+		"SELECT count(*) FROM deployments WHERE status = 'active'":                                                         4,
+		"SELECT count(*) FROM deployments WHERE spec->>'ssd_experts_gib' = '16' AND spec->>'learn_conversations' = 'true'": 1,
+		"SELECT count(*) FROM deployments WHERE spec->>'tensor_parallel' = 'glm' AND (spec->>'gpus')::int = 2":             1,
+		"SELECT count(*) FROM model_grants WHERE project_id IS NULL":                                                       2,
+		"SELECT count(*) FROM role_bindings WHERE project_id IS NULL":                                                      2,
+		"SELECT count(*) FROM role_bindings WHERE project_id IS NOT NULL":                                                  3,
+		"SELECT count(*) FROM limits":                                                                                      4,
+		"SELECT count(*) FROM audit_events WHERE actor_type <> 'operator'":                                                 0,
+		"SELECT count(*) FROM settings WHERE org_name = 'Example Corp'":                                                    1,
 	} {
 		if got := r.count(sql); got != want {
 			t.Errorf("%s = %d, want %d", sql, got, want)

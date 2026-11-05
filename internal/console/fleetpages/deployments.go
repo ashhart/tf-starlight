@@ -111,7 +111,8 @@ func (f *fields) spec() wire.Spec {
 		ReasoningEffort: q.Form("reasoning_effort"), Vision: q.Bool("vision"), NoDrafts: q.Bool("no_drafts"),
 		Context: f.int("context", 0), Parallel: f.int("parallel", 0), ThinkingBudget: f.int("thinking_budget", 0),
 		MaxTokens: f.int("max_tokens", 0), PromptCacheGiB: f.int("prompt_cache_gib", 0), PromptCache: q.Form("prompt_cache"), MemoryGiB: f.int("memory_gib", 0),
-		GPUs: f.int("gpus", 0), Nodes: f.int("nodes", 0), TensorParallel: q.Form("tensor_parallel")}
+		GPUs: f.int("gpus", 0), Nodes: f.int("nodes", 0), TensorParallel: q.Form("tensor_parallel"), SSDExpertsGiB: f.int("ssd_experts_gib", 0),
+		PLEOnSSD: q.Bool("ple_on_ssd"), LearnConversations: q.Bool("learn_conversations"), LearnGiB: f.int("learn_gib", 0), LearnDailyGiB: f.int("learn_daily_gib", 0)}
 	if m := f.artifact("model", true); m != nil {
 		s.Model = *m
 	}

@@ -19,7 +19,6 @@ const (
 
 // run is the replica's actor: stage, start, watch, and restart within the crash budget until removed.
 func (r *Replica) run() {
-	defer close(r.exited)
 	failures := 0
 	for {
 		if r.ctx.Err() != nil {

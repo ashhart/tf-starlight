@@ -66,6 +66,19 @@ func TestDeploymentFormValidatesTheSpec(t *testing.T) {
 	if r.scalar("SELECT (spec->'model'->>'repo') || ' ' || mode || ' ' || (selector->>'gpu') FROM deployments WHERE name = 'coder-gpu'") != "example-org/coder on_demand b300" {
 		t.Fatal("deployment fields were not stored")
 	}
+	disk := url.Values{"name": {"coder-ssd"}, "model_kind": {"path"}, "model_path": {"/srv/coder"}, "pool": {"mac"}, "mode": {"warm"}, "min_replicas": {"1"},
+		"max_replicas": {"1"}, "ssd_experts_gib": {"16"}, "ple_on_ssd": {"on"}, "learn_conversations": {"on"}, "learn_gib": {"64"}, "learn_daily_gib": {"128"}}
+	if code, body := owner.post("/console/models/"+r.model+"/deployments", disk); code != http.StatusUnprocessableEntity || !strings.Contains(body, "backend must be metal") {
+		t.Fatalf("SSD settings with no backend %d: %s", code, body)
+	}
+	disk.Set("backend", "metal")
+	if code, body := owner.post("/console/models/"+r.model+"/deployments", disk); code != http.StatusSeeOther {
+		t.Fatalf("SSD settings on metal %d: %s", code, body)
+	}
+	if got := r.scalar(`SELECT concat_ws(' ', spec->>'ssd_experts_gib', spec->>'ple_on_ssd', spec->>'learn_conversations', spec->>'learn_gib', spec->>'learn_daily_gib')
+		FROM deployments WHERE name = 'coder-ssd'`); got != "16 true true 64 128" {
+		t.Fatalf("disk settings stored as %q", got)
+	}
 	same := url.Values{"model_kind": {"path"}, "model_path": {"/srv/coder"}, "pool": {"mac"}, "mode": {"warm"}, "min_replicas": {"1"}, "max_replicas": {"2"}}
 	if code, page := owner.follow("/console/deployments/coder-mac", same); code != http.StatusSeeOther || !strings.Contains(page, "Deployment saved.") {
 		t.Fatalf("placement-only save %d", code)
@@ -86,7 +99,7 @@ func TestDeploymentFormValidatesTheSpec(t *testing.T) {
 	if r.scalar("SELECT desired FROM replicas WHERE id = $1", r.replica) != "stopped" || r.audited("deployment.retired") != 1 {
 		t.Fatal("retiring did not stop replicas with an audit event")
 	}
-	if r.audited("deployment.created") != 1 || r.audited("deployment.updated") != 2 {
+	if r.audited("deployment.created") != 2 || r.audited("deployment.updated") != 2 {
 		t.Fatal("deployment changes were not audited")
 	}
 }

@@ -160,23 +160,28 @@ func (a Artifact) Validate() error {
 
 // Spec is the typed engine configuration; nodes build argv from it and never from free text.
 type Spec struct {
-	Model           Artifact  `json:"model"`
-	Drafter         *Artifact `json:"drafter,omitempty"`
-	Backend         string    `json:"backend,omitempty"`
-	Context         int       `json:"context,omitempty"`
-	Parallel        int       `json:"parallel,omitempty"`
-	KVCache         string    `json:"kv_cache,omitempty"`
-	ReasoningEffort string    `json:"reasoning_effort,omitempty"`
-	ThinkingBudget  int       `json:"thinking_budget,omitempty"`
-	MaxTokens       int       `json:"max_tokens,omitempty"`
-	PromptCacheGiB  int       `json:"prompt_cache_gib,omitempty"`
-	PromptCache     string    `json:"prompt_cache,omitempty"`
-	Vision          bool      `json:"vision,omitempty"`
-	NoDrafts        bool      `json:"no_drafts,omitempty"`
-	MemoryGiB       int       `json:"memory_gib,omitempty"`
-	GPUs            int       `json:"gpus,omitempty"`
-	Nodes           int       `json:"nodes,omitempty"`
-	TensorParallel  string    `json:"tensor_parallel,omitempty"`
+	Model              Artifact  `json:"model"`
+	Drafter            *Artifact `json:"drafter,omitempty"`
+	Backend            string    `json:"backend,omitempty"`
+	Context            int       `json:"context,omitempty"`
+	Parallel           int       `json:"parallel,omitempty"`
+	KVCache            string    `json:"kv_cache,omitempty"`
+	ReasoningEffort    string    `json:"reasoning_effort,omitempty"`
+	ThinkingBudget     int       `json:"thinking_budget,omitempty"`
+	MaxTokens          int       `json:"max_tokens,omitempty"`
+	PromptCacheGiB     int       `json:"prompt_cache_gib,omitempty"`
+	PromptCache        string    `json:"prompt_cache,omitempty"`
+	Vision             bool      `json:"vision,omitempty"`
+	NoDrafts           bool      `json:"no_drafts,omitempty"`
+	SSDExpertsGiB      int       `json:"ssd_experts_gib,omitempty"`
+	PLEOnSSD           bool      `json:"ple_on_ssd,omitempty"`
+	LearnConversations bool      `json:"learn_conversations,omitempty"`
+	LearnGiB           int       `json:"learn_gib,omitempty"`
+	LearnDailyGiB      int       `json:"learn_daily_gib,omitempty"`
+	MemoryGiB          int       `json:"memory_gib,omitempty"`
+	GPUs               int       `json:"gpus,omitempty"`
+	Nodes              int       `json:"nodes,omitempty"`
+	TensorParallel     string    `json:"tensor_parallel,omitempty"`
 }
 
 // Validate bounds every field the node will turn into an engine flag.
@@ -213,18 +218,44 @@ func (s Spec) Validate() error {
 	if err := s.validateRanks(); err != nil {
 		return err
 	}
+	if err := s.validateDisk(); err != nil {
+		return err
+	}
 	bounds := []struct {
 		name      string
 		v, lo, hi int
 	}{
 		{"context", s.Context, 0, 4 << 20}, {"parallel", s.Parallel, 0, 128}, {"thinking_budget", s.ThinkingBudget, 0, 1 << 20},
 		{"max_tokens", s.MaxTokens, 0, 1 << 20}, {"prompt_cache_gib", s.PromptCacheGiB, 0, 4096}, {"memory_gib", s.MemoryGiB, 0, 1 << 16},
-		{"gpus", s.GPUs, 0, 16}, {"nodes", s.Nodes, 0, 16},
+		{"gpus", s.GPUs, 0, 16}, {"nodes", s.Nodes, 0, 16}, {"ssd_experts_gib", s.SSDExpertsGiB, 0, 4096},
+		{"learn_gib", s.LearnGiB, 0, 1 << 16}, {"learn_daily_gib", s.LearnDailyGiB, 0, 1 << 16},
 	}
 	for _, b := range bounds {
 		if b.v < b.lo || b.v > b.hi {
 			return fmt.Errorf("%s must be between %d and %d", b.name, b.lo, b.hi)
 		}
+	}
+	return nil
+}
+
+// validateDisk checks the settings that leave weights or conversations on disk against what the engine serves.
+func (s Spec) validateDisk() error {
+	if (s.SSDExpertsGiB > 0 || s.PLEOnSSD) && s.Backend != "metal" {
+		return errors.New("ssd_experts_gib and ple_on_ssd read a checkpoint from one Mac's SSD, so backend must be metal")
+	}
+	if !s.LearnConversations {
+		if s.LearnGiB > 0 || s.LearnDailyGiB > 0 {
+			return errors.New("learn_gib and learn_daily_gib limit learn_conversations, which is off")
+		}
+		return nil
+	}
+	switch {
+	case s.PromptCache == "off":
+		return errors.New("prompt_cache off keeps no prompt states, so learn_conversations has none to keep")
+	case s.TensorParallel != "":
+		return errors.New("learn_conversations keeps one engine's states, so it cannot run with tensor_parallel")
+	case s.Backend == "hip" || s.Backend == "xpu":
+		return errors.New("learn_conversations runs on metal and cuda")
 	}
 	return nil
 }

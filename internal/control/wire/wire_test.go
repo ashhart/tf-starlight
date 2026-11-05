@@ -51,6 +51,32 @@ func TestEngineRouteAllowlist(t *testing.T) {
 	}
 }
 
+func TestDiskSettingsNeedAnEngineThatServesThem(t *testing.T) {
+	m := Artifact{Kind: "path", Path: "/m"}
+	good := []Spec{
+		{Model: m, Backend: "metal", SSDExpertsGiB: 16}, {Model: m, Backend: "metal", PLEOnSSD: true},
+		{Model: m, Backend: "metal", SSDExpertsGiB: 16, PLEOnSSD: true, LearnConversations: true, LearnGiB: 64, LearnDailyGiB: 128},
+		{Model: m, LearnConversations: true}, {Model: m, Backend: "cuda", LearnConversations: true},
+	}
+	for _, s := range good {
+		if err := s.Validate(); err != nil {
+			t.Errorf("%+v: %v", s, err)
+		}
+	}
+	bad := []Spec{
+		{Model: m, SSDExpertsGiB: 16}, {Model: m, Backend: "cuda", SSDExpertsGiB: 16}, {Model: m, PLEOnSSD: true}, {Model: m, Backend: "hip", PLEOnSSD: true},
+		{Model: m, Backend: "metal", SSDExpertsGiB: 5000}, {Model: m, Backend: "metal", SSDExpertsGiB: -1},
+		{Model: m, LearnConversations: true, PromptCache: "off"}, {Model: m, Backend: "hip", LearnConversations: true}, {Model: m, Backend: "xpu", LearnConversations: true},
+		{Model: m, Backend: "cuda", LearnConversations: true, GPUs: 2, TensorParallel: "glm"},
+		{Model: m, LearnGiB: 64}, {Model: m, LearnDailyGiB: 64}, {Model: m, LearnConversations: true, LearnGiB: 1 << 17},
+	}
+	for _, s := range bad {
+		if s.Validate() == nil {
+			t.Errorf("accepted %+v", s)
+		}
+	}
+}
+
 func TestSpecBounds(t *testing.T) {
 	s := Spec{Model: Artifact{Kind: "path", Path: "/m"}, Context: 32768, Parallel: 8, KVCache: "fp8"}
 	if err := s.Validate(); err != nil {

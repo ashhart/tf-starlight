@@ -44,6 +44,7 @@ type Supervisor struct {
 	mu       sync.Mutex
 	replicas map[string]*Replica
 	closed   bool
+	swept    bool
 }
 
 // New prepares a supervisor and stops engines a crashed predecessor left behind.
@@ -119,6 +120,10 @@ func (s *Supervisor) Apply(asgs []wire.Assignment) {
 			want[a.ReplicaID] = a
 		}
 	}
+	if !s.swept {
+		s.swept = true
+		s.sweep(want)
+	}
 	for id, r := range s.replicas {
 		if _, ok := want[id]; !ok {
 			r.remove()
@@ -145,7 +150,8 @@ func (s *Supervisor) start(a wire.Assignment) {
 	s.replicas[a.ReplicaID] = r
 	go func() {
 		r.run()
-		_ = os.RemoveAll(r.dir)
+		s.clearDir(r)
+		close(r.exited)
 		s.mu.Lock()
 		if s.replicas[r.id] == r {
 			delete(s.replicas, r.id)
@@ -153,6 +159,40 @@ func (s *Supervisor) start(a wire.Assignment) {
 		s.mu.Unlock()
 		s.notify()
 	}()
+}
+
+// clearDir removes a stopped replica's directory; an agent shutting down leaves its conversations for its next start.
+func (s *Supervisor) clearDir(r *Replica) {
+	s.mu.Lock()
+	closing := s.closed
+	s.mu.Unlock()
+	if !closing {
+		_ = os.RemoveAll(r.dir)
+		return
+	}
+	entries, err := os.ReadDir(r.dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.Name() != LearnedDir {
+			_ = os.RemoveAll(filepath.Join(r.dir, e.Name()))
+		}
+	}
+	_ = os.Remove(r.dir)
+}
+
+// sweep removes what an earlier agent left for replicas no longer assigned, conversations on disk among it.
+func (s *Supervisor) sweep(want map[string]wire.Assignment) {
+	dirs, err := os.ReadDir(s.cfg.Root)
+	if err != nil {
+		return
+	}
+	for _, d := range dirs {
+		if _, ok := want[d.Name()]; !ok && d.IsDir() && ids.Valid(d.Name()) {
+			_ = os.RemoveAll(filepath.Join(s.cfg.Root, d.Name()))
+		}
+	}
 }
 
 // Get returns a replica by id for the proxy.

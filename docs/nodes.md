@@ -26,7 +26,7 @@ gateway ──mTLS (gateway cert) + permit──▶ :7443 starlight-node ──l
 - **Engines.** Each replica gets its own working directory, a fresh 0600 key file with three keys (`starlight[inference]`,
   `starlight-read[read]` and an unscoped `starlight-responses`), and an engine started with typed flags only: `serve <model> --host 127.0.0.1 --port 0 --name <served>
   --api-key-file <file> --no-update-check`, plus the deployment's context, parallelism, KV cache, reasoning, drafter,
-  vision and prompt-cache settings. The node learns the port from the engine's `serving … at http://127.0.0.1:PORT/v1`
+  vision, prompt-cache and on-disk settings. The node learns the port from the engine's `serving … at http://127.0.0.1:PORT/v1`
   line and declares the replica ready only after `/health` answers and `/v1/models` lists the served name.
 - **Engine version.** Before every start the agent runs `--version` on the engine and refuses one older than
   TensorFold 1.2.0, the release Starlight is qualified on; releases before 1.1.8 do not honour key scopes at all, so every
@@ -167,7 +167,7 @@ listener serves the new certificate to the next connection without a restart.
 
 | `run` flag | Default | Meaning |
 | --- | --- | --- |
-| `--state-dir` | per platform | Private state: identity, credentials, CA, permit keys, replica directories |
+| `--state-dir` | per platform | Private state: identity, credentials, CA, permit keys, replica directories and any [conversations they keep on disk](fleet.md#conversations-on-disk) |
 | `--listen` | `:7443` | Gateway-facing mTLS listener |
 | `--advertise` | host name and port | Address reported to Starlight |
 | `--engine` | `tensorfold` on `PATH` | Engine binary |
