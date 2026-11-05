@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -76,6 +77,19 @@ func TestBackendOverride(t *testing.T) {
 	if _, ok := Open(t.TempDir()).(*File); !ok {
 		t.Fatal("file backend not honoured")
 	}
+}
+
+// TestOpenChoosesTheExpectedStore is for a machine known to offer one store or none; it names what Open must choose.
+func TestOpenChoosesTheExpectedStore(t *testing.T) {
+	want := os.Getenv("TENSORFOLD_CONNECT_EXPECT_STORE")
+	if want == "" {
+		t.Skip("set TENSORFOLD_CONNECT_EXPECT_STORE to part of the store's name")
+	}
+	s := Open(t.TempDir())
+	if !strings.Contains(s.Backend(), want) {
+		t.Fatalf("Connect chose %s, wanted %s", s.Backend(), want)
+	}
+	exercise(t, s, "expected-store")
 }
 
 func TestPlatformStore(t *testing.T) {

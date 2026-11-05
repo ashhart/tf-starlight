@@ -183,6 +183,47 @@ jobs:
           if ($tray.HasExited) { throw "the tray exited with code $($tray.ExitCode)" }
           Stop-Process -Id $tray.Id
 
+  linux-desktop:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache-dependency-path: go.sum
+      - name: with no Secret Service, Connect uses its private file
+        env:
+          TENSORFOLD_CONNECT_EXPECT_STORE: private file
+        run: |
+          go test -c -o "$RUNNER_TEMP/store.test" ./internal/connect/store
+          (cd internal/connect/store && env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR "$RUNNER_TEMP/store.test" -test.run TestOpenChoosesTheExpectedStore -test.v)
+          (cd internal/connect/store && dbus-run-session -- "$RUNNER_TEMP/store.test" -test.run TestOpenChoosesTheExpectedStore -test.v)
+      - name: install GNOME Keyring and a virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnome-keyring libsecret-tools xvfb
+      - name: under GNOME Keyring, tokens land in the Secret Service
+        env:
+          TENSORFOLD_CONNECT_PLATFORM_STORE_TEST: "1"
+          TENSORFOLD_CONNECT_EXPECT_STORE: Secret Service
+        run: |
+          cd internal/connect/store
+          xvfb-run -a dbus-run-session -- bash -euc '
+            eval "$(printf ci-keyring | gnome-keyring-daemon --unlock --components=secrets)"
+            export GNOME_KEYRING_CONTROL
+            "$RUNNER_TEMP/store.test" -test.run "TestPlatformStore|TestOpenChoosesTheExpectedStore|TestTokensLandInTheSecretService" -test.v
+          '
+      - name: the tray starts and stays up
+        run: |
+          go build -o "$RUNNER_TEMP/tensorfold-connect" ./cmd/tensorfold-connect
+          status=0
+          TENSORFOLD_CONNECT_STORE=file TENSORFOLD_CONNECT_HOME="$RUNNER_TEMP/connect" xvfb-run -a dbus-run-session -- \
+            timeout 8 "$RUNNER_TEMP/tensorfold-connect" tray || status=$?
+          if [ "$status" != 124 ]; then echo "::error::the tray exited with status $status before the timeout ended it"; exit 1; fi
+
   cross:
     timeout-minutes: 20
     runs-on: ubuntu-latest

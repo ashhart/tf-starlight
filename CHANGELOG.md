@@ -27,6 +27,7 @@
   `starlight-node.log` in the state directory, where its log used to go nowhere.
 - CI runs on Windows: the node agent and Connect suites, fleet tests, `install-windows.ps1` and the service it installs, the
   state directory's ACL, Credential Manager, the shipped Group Policy values and the tray.
+- CI checks Connect's stores on Linux: GNOME Keyring through the Secret Service, and the private file where there is none.
 - CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
   printed command.
 - Security: post-login redirects refuse anything starting with two slashes, and the cookies that set and clear a console

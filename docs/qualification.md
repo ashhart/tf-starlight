@@ -144,6 +144,14 @@ CI's `windows` job runs on the hosted Windows Server 2025 runner, with Go 1.27.3
 | --- | --- | --- |
 | 5 November 2026 | Windows Server 2025, Go 1.27.3, Postgres 17.11 | Passes. The first native run found four things, all fixed. A `path` artifact could not name a Windows path such as `D:\models\qwen`. An administrator running any `starlight-node` command added their own account to the state directory's ACL, where it stayed if they later lost the role. The service's log went nowhere, since a service has no stderr. `docs/nodes.md` named a Windows engine that no TensorFold release has |
 
+### Linux desktop
+
+CI's `linux-desktop` job runs on the hosted Ubuntu 26.04 runner. With no session bus, and with a session bus but no Secret
+Service, Connect keeps tokens in its private file. Under GNOME Keyring 50, on a private session bus and a virtual display,
+it chooses the Secret Service, stores and removes a value without signing in, and `secret-tool lookup` finds what it wrote
+(`TestTokensLandInTheSecretService`). `tensorfold-connect tray` starts under `xvfb` and is still running 8 seconds later,
+though with no panel there to show it, it logs that nothing provides `org.kde.StatusNotifierWatcher`.
+
 ### The Compose quick start
 
 CI's `quickstart` job runs [`scripts/check-quickstart.sh`](../scripts/check-quickstart.sh) on every change. It takes the
@@ -246,8 +254,9 @@ since no release has one; and see the tray's icon, and apply the ADMX through Gr
 
 ### Linux desktop
 
-On GNOME and KDE: run `tensorfold-connect tray`, confirm tokens are stored in the Secret Service (`secret-tool search`) and
-that the file fallback is used only where no Secret Service exists.
+CI covers GNOME Keyring and the file fallback, [above](#linux-desktop). Two things need a real desktop. On KDE, confirm tokens
+land in KWallet: it creates its wallet through a dialog, and a runner has nobody to answer it. On GNOME and KDE, confirm the
+tray's icon appears in a real session.
 
 ### Real identity tenants
 
