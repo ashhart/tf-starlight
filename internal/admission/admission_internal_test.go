@@ -32,12 +32,12 @@ func TestHeartbeatKeepsOnlyWhatThisProcessHolds(t *testing.T) {
 	pool := testutil.DB(t)
 	ctx := context.Background()
 	exec := execer(t, pool)
-	model, dep, node := ids.New(), ids.New(), ids.New()
+	model, dep, node, replica := ids.New(), ids.New(), ids.New(), ids.New()
 	exec("INSERT INTO models (id, name, display_name) VALUES ($1, 'qwen3.8-27b', 'Qwen')", model)
 	exec(`INSERT INTO deployments (id, model_id, name, spec) VALUES ($1, $2, 'qwen-mac', '{"model":{"kind":"path","path":"/m"}}')`, dep, model)
 	exec("INSERT INTO nodes (id, name, status, address, last_seen_at) VALUES ($1, 'studio-1', 'active', '192.0.2.10:7443', now())", node)
 	exec("INSERT INTO replicas (id, deployment_id, deployment_revision, node_id, state, slots, epoch) VALUES ($1, $2, 1, $3, 'ready', 2, 1)",
-		ids.New(), dep, node)
+		replica, dep, node)
 	a := &Admitter{Pool: pool, GatewayID: ids.New(), Poll: 50 * time.Millisecond}
 	request := func() Request {
 		return Request{RequestID: ids.New(), ModelID: model, Priority: levels.Standard, Class: levels.Internal, Local: true, Tokens: 100,
@@ -68,12 +68,24 @@ func TestHeartbeatKeepsOnlyWhatThisProcessHolds(t *testing.T) {
 	}
 	exec(`INSERT INTO admission_queue (id, request_id, gateway_id, model_id, priority, base_rank, candidates, deadline)
 		VALUES ($1, 'orphan', $2, $3, 'standard', 1000, '{}', now() + interval '1 minute')`, ids.New(), a.GatewayID, model)
+	// Stale rows free a slot at once, so hold admission's lock on the replica until the waiter has been seen still queued.
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('starlight:target:' || $1::text, 0))", replica); err != nil {
+		t.Fatal(err)
+	}
 	exec("UPDATE leases SET heartbeat_at = now() - interval '2 minutes'")
 	exec("UPDATE admission_queue SET heartbeat_at = now() - interval '2 minutes'")
 	beat(ctx, pool, a.GatewayID)
 	var fresh []string
 	if err := pool.QueryRow(ctx, `SELECT array(SELECT id::text FROM leases WHERE heartbeat_at > now() - interval '1 minute'
 		UNION ALL SELECT request_id FROM admission_queue WHERE heartbeat_at > now() - interval '1 minute')`).Scan(&fresh); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if want := []string{kept.ID, waiting.RequestID}; !slices.Equal(slices.Sorted(slices.Values(fresh)), slices.Sorted(slices.Values(want))) {
