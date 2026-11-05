@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/ashhart/tf-starlight/internal/identity/directory"
@@ -74,16 +73,13 @@ func SameOrigin(r *http.Request) bool {
 	return err == nil && strings.EqualFold(u.Host, r.Host)
 }
 
-// SafeReturn keeps post-login redirects on this site; backslashes and paths that clean to "//" are refused.
+// SafeReturn keeps post-login redirects on this site; backslashes and anything starting with two slashes are refused.
 func SafeReturn(target, fallback string) string {
-	if target == "" || !strings.HasPrefix(target, "/") || strings.ContainsAny(target, "\\\r\n") {
+	if target == "" || !strings.HasPrefix(target, "/") || strings.HasPrefix(target, "//") || strings.ContainsAny(target, "\\\r\n") {
 		return fallback
 	}
 	u, err := url.Parse(target)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.Opaque != "" || strings.Contains(u.Path, "\\") {
-		return fallback
-	}
-	if clean := path.Clean(u.Path); strings.HasPrefix(clean, "//") || !strings.HasPrefix(clean, "/") {
 		return fallback
 	}
 	return target

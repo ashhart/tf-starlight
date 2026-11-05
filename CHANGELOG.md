@@ -20,5 +20,8 @@
   arm64 too, cross-compiles its agent, and carries its version.
 - CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
   printed command.
+- Security: post-login redirects refuse anything starting with two slashes, and the cookie that clears a console notice has
+  the same `Secure` flag as the one that set it. CodeQL's first run found both; `http.Redirect` already kept the first from
+  leaving the site.
 - CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds, and CodeQL for Go on every
   pull request, on `main` and weekly.

@@ -106,7 +106,7 @@ func TestRequireEnforcesCSRFAndOrigin(t *testing.T) {
 }
 
 func TestSafeReturn(t *testing.T) {
-	for in, want := range map[string]string{"/console/a": "/console/a", "//evil.example": "/c", "https://evil.example": "/c", "/\\evil": "/c", "": "/c",
+	for in, want := range map[string]string{"/console/a": "/console/a", "//evil.example": "/c", "///evil.example/": "/c", "////evil.example": "/c", "https://evil.example": "/c", "/\\evil": "/c", "": "/c",
 		"/a\r\nx": "/c", "/a/../\\evil.example": "/c", "/%5Cevil.example": "/c", "/oauth/authorize?client_id=x&state=y": "/oauth/authorize?client_id=x&state=y"} {
 		if got := session.SafeReturn(in, "/c"); got != want {
 			t.Errorf("SafeReturn(%q) = %q", in, got)

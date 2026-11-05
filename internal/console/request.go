@@ -49,7 +49,8 @@ func (c *Console) request(w http.ResponseWriter, r *http.Request) (*Request, err
 	q := &Request{W: w, R: r, User: u, Session: s, Grants: g, Groups: groups, c: c}
 	if f, err := r.Cookie(flashCookie); err == nil {
 		q.flash, _ = url.QueryUnescape(f.Value)
-		http.SetCookie(w, &http.Cookie{Name: flashCookie, Path: "/console", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		http.SetCookie(w, &http.Cookie{Name: flashCookie, Path: "/console", MaxAge: -1, HttpOnly: true, Secure: r.TLS != nil,
+			SameSite: http.SameSiteStrictMode})
 	}
 	return q, nil
 }

@@ -119,6 +119,20 @@ CodeQL's extended security queries for Go run on every pull request, on `main` a
 | --- | --- | --- |
 | 5 November 2026 | `govulncheck` 1.9.0, Go 1.27.3 | The first run found one vulnerability the code reaches: GO-2026-4753 (CVE-2026-33487) in `goxmldsig` 1.4.0, on the SAML signature check. Fixed by moving to 1.6.1; a second run on all five platforms finds none reachable. It also notes GO-2026-5932, `golang.org/x/crypto/openpgp`, a package Starlight does not import; no tagged `x/crypto` release has dropped it yet |
 
+CodeQL's first full run on `main`, on 5 November 2026 with CodeQL 2.27.4 and Go 1.27.3, raised 14 alerts. Two led to fixes. The
+others were dismissed on the Security tab, each with its reason:
+
+| Alert | Where | What it was |
+| --- | --- | --- |
+| `go/bad-redirect-check` | `internal/identity/session/guard.go` | Fixed. `SafeReturn` let `///evil.example/` through. It was not exploitable, since the one redirect it feeds, `http.Redirect`, cleans the path first, but now anything starting with two slashes is refused |
+| `go/cookie-secure-not-set` | `internal/console/request.go` | Fixed. The cookie that clears a one-time notice now has the same `Secure` flag as the one that set it |
+| `go/disabled-certificate-check`, 2 | `internal/crypto/pki/verify.go`, `internal/node/trust/trust.go` | Not a flaw. `InsecureSkipVerify` turns off only the hostname check, and `VerifyConnection` checks the chain and the SPIFFE ID on every connection |
+| `go/weak-sensitive-data-hashing`, 2 | `internal/crypto/secret/secret.go`, `internal/gateway/serve.go` | Not a flaw. Tokens carry 280 random bits, so they need no slow hash; the other hashes an id into a pseudonym for logs |
+| `go/zipslip` | `internal/node/artifacts/extract.go` | Not a flaw. `entryPath` refuses absolute and parent-relative names, links are refused, and tests cover both |
+| `go/allocation-size-overflow` | `internal/crypto/keyring/keyring.go` | Not a flaw. It adds a few bytes to the length of a secret held in memory, which is far below the overflow on 64-bit platforms, the only ones built |
+| `go/log-injection`, 4 | `internal/console/request.go`, `internal/node/proxy/proxy.go`, `internal/identity/login/errors.go` | Not a flaw. `log/slog`'s JSON and text handlers escape line breaks in values |
+| `go/unvalidated-url-redirection`, 2 | `internal/identity/oidc/oidcfake`, `internal/connect/fakestarlight` | Test fakes that only tests import |
+
 ### Packages
 
 | Area | Suite | Covers |
