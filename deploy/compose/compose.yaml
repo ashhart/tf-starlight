@@ -47,7 +47,7 @@ services:
 
   prometheus:
     profiles: [monitoring]
-    image: prom/prometheus:v3.0.0
+    image: prom/prometheus:v3.15.1
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=15d"]
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -59,7 +59,7 @@ services:
 
   grafana:
     profiles: [monitoring]
-    image: grafana/grafana:11.3.0
+    image: grafana/grafana:13.3.0
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?run bootstrap.sh first}
@@ -75,7 +75,7 @@ services:
 
   keycloak:
     profiles: [idp]
-    image: quay.io/keycloak/keycloak:26.0.0
+    image: quay.io/keycloak/keycloak:26.8.2
     command: ["start-dev", "--import-realm", "--http-port=8080"]
     user: "${STARLIGHT_UID:-1000}:0"
     network_mode: "service:starlight"
