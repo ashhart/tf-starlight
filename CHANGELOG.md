@@ -20,4 +20,5 @@
   arm64 too, cross-compiles its agent, and carries its version.
 - CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
   printed command.
-- CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds.
+- CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds, and CodeQL for Go on every
+  pull request, on `main` and weekly.

@@ -143,6 +143,8 @@ of the database's backups and hosts.
   running after their lead was lost, follower nodes' classification ignored, a pasted private key kept in plain text,
   client addresses lost behind proxies that send ports, and CPU exhaustion through SAML logout. No third-party review
   or penetration test has been done; commission one before production use.
+- CI runs `govulncheck` and CodeQL on every change, and [qualification.md](qualification.md#security-scans) records what they
+  found. They look for known flaws and common patterns, and take the place of neither review.
 - Single sign-on has been tested against in-process IdP fakes, not real tenants; see [qualification.md](qualification.md).
 - A deployment that keeps prompt states shares them among the projects its model is granted to, so timing can reveal
   to one of them whether another recently sent a prefix. Set `isolate_prompt_cache` on projects that must not share,

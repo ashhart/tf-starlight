@@ -92,7 +92,7 @@ with the first tag.
 
 | Date | Run | Result |
 | --- | --- | --- |
-| 5 November 2026 | Dry run of `0.0.0-dryrun` on a branch, with TensorFold 1.2.1 in the node image | Every job passed: 15 archives, the deployment files, the chart and `SHA256SUMS`; every binary printed its version on Linux, macOS and Windows; both images started on both architectures; no release and no package appeared |
+| 5 November 2026 | Manual dry run of `0.0.0-dryrun` from `main`, with TensorFold 1.2.1 in the node image | Every job passed: 15 archives, the deployment files, the chart and `SHA256SUMS`; every binary printed its version on Linux, macOS and Windows; both images started on both architectures; no release, tag or package appeared |
 
 ### The Compose quick start
 
@@ -112,6 +112,8 @@ runs no model.
 
 `govulncheck` runs on every pull request, on `main` and every day, for each platform CI builds
 ([`govulncheck.yml`](../.github/workflows/govulncheck.yml)). It fails when Starlight's code can reach a known vulnerability.
+CodeQL's extended security queries for Go run on every pull request, on `main` and every week
+([`codeql.yml`](../.github/workflows/codeql.yml)), over the Linux build, and report to the repository's Security tab.
 
 | Date | Tool | Result |
 | --- | --- | --- |
