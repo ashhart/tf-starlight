@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-rc.2
+
+The second pre-release, and the first with a GitHub release: it holds everything listed under 0.1.0-rc.1. Like that one,
+it is not qualified for production: [docs/qualification.md](docs/qualification.md#open-gates) lists the gates still open.
+
+- The release workflow logs in to GHCR with Docker's login before it records the chart's build provenance. 0.1.0-rc.1
+  published its images and chart, but that step found no credentials, so it had no GitHub release.
+
 ## 0.1.0-rc.1
 
 The first pre-release. It is not qualified for production: [docs/qualification.md](docs/qualification.md#open-gates) lists

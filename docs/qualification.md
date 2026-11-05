@@ -90,12 +90,13 @@ refuses the two SSD flags. No suite has run them with a real model: the Metal ga
 run: a manual run, or a pull request that changes how releases are made. A dry run builds all three binaries for five
 platforms, runs each on its own operating system and architecture, builds both images for amd64 and arm64 and starts each
 on each architecture, with arm64 under emulation, packages the chart and pushes it to a registry on the runner, and writes
-the checksums. It signs and publishes nothing. So the login to GHCR, the attestations and creating the release first run
-with the first tag.
+the checksums. It signs and publishes nothing, so the GHCR login, the attestations and creating the release run only for a
+tag.
 
 | Date | Run | Result |
 | --- | --- | --- |
 | 5 November 2026 | Manual dry run of `0.0.0-dryrun` from `main`, with TensorFold 1.2.1 in the node image | Every job passed: 15 archives, the deployment files, the chart and `SHA256SUMS`; every binary printed its version on Linux, macOS and Windows; both images started on both architectures; no release, tag or package appeared |
+| 5 November 2026 | Tag `v0.1.0-rc.1`, with TensorFold 1.2.3 in the node image | Binaries, smoke runs, both images with their provenance, and the chart pushed to GHCR. The chart's provenance step found no registry login, since the job had logged in through Helm only, so no GitHub release was made; fixed in 0.1.0-rc.2 |
 
 ### High availability and recovery drills
 

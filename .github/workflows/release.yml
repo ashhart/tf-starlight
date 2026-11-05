@@ -248,6 +248,13 @@ jobs:
           helm push "dist/starlight-$VERSION.tgz" oci://localhost:5000/charts --plain-http 2>&1 | tee push.log
           grep -Eq '^Digest: sha256:[0-9a-f]{64}$' push.log
           helm show chart oci://localhost:5000/charts/starlight --version "$VERSION" --plain-http
+      # The chart's provenance goes into the registry beside it, and that step reads Docker's login, not Helm's.
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: push the chart
         id: push
         if: needs.plan.outputs.publish == 'true'
