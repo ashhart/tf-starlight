@@ -1,0 +1,48 @@
+name: Vulnerabilities
+
+# Known vulnerabilities in code Starlight can reach, on every platform it ships; daily too, as advisories arrive without a commit.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GOFLAGS: -mod=readonly
+  GOTOOLCHAIN: local
+
+jobs:
+  govulncheck:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache-dependency-path: go.sum
+      - name: install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: scan the platforms ci.yml builds
+        run: |
+          status=0
+          for target in linux/amd64 linux/arm64 darwin/arm64 windows/amd64 windows/arm64; do
+            os="${target%/*}"; arch="${target#*/}"
+            tags=""
+            if [ "$os" = darwin ]; then tags=notray; fi
+            echo "::group::$target"
+            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 "$(go env GOPATH)/bin/govulncheck" -tags "$tags" ./... || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"

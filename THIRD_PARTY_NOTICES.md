@@ -10,7 +10,7 @@ image's files, which carry their own licences.
 | --- | --- | --- | --- |
 | Go standard library | 1.27 | BSD-3-Clause | starlight, starlight-node, tensorfold-connect |
 | `fyne.io/systray` | v1.12.2 | Apache-2.0 | tensorfold-connect |
-| `github.com/beevik/etree` | v1.5.0 | BSD-2-Clause | starlight |
+| `github.com/beevik/etree` | v1.7.0 | BSD-2-Clause | starlight |
 | `github.com/beorn7/perks` | v1.0.1 | MIT | starlight |
 | `github.com/cespare/xxhash/v2` | v2.3.0 | MIT | starlight |
 | `github.com/coreos/go-oidc/v3` | v3.21.0 | Apache-2.0 | starlight |
@@ -22,7 +22,7 @@ image's files, which carry their own licences.
 | `github.com/jackc/pgservicefile` | v0.0.0-20240606120523-5a60cdf6a761 | MIT | starlight |
 | `github.com/jackc/pgx/v5` | v5.12.0 | MIT | starlight |
 | `github.com/jackc/puddle/v2` | v2.2.3 | MIT | starlight |
-| `github.com/jonboulle/clockwork` | v0.2.2 | Apache-2.0 | starlight |
+| `github.com/jonboulle/clockwork` | v0.5.0 | Apache-2.0 | starlight |
 | `github.com/mattermost/xml-roundtrip-validator` | v0.1.0 | Apache-2.0 | starlight |
 | `github.com/miekg/dns` | v1.1.72 | BSD-3-Clause | starlight, tensorfold-connect |
 | `github.com/munnerz/goautoneg` | v0.0.0-20191010083416-a7dc8b61c822 | BSD-3-Clause | starlight |
@@ -30,7 +30,7 @@ image's files, which carry their own licences.
 | `github.com/prometheus/client_model` | v0.6.3 | Apache-2.0 | starlight |
 | `github.com/prometheus/common` | v0.72.0 | Apache-2.0 | starlight |
 | `github.com/prometheus/procfs` | v0.22.0 | Apache-2.0 | starlight (Linux only) |
-| `github.com/russellhaering/goxmldsig` | v1.4.0 | Apache-2.0 | starlight |
+| `github.com/russellhaering/goxmldsig` | v1.6.1 | Apache-2.0 | starlight |
 | `go.yaml.in/yaml/v3` | v3.0.6 | Apache-2.0 and MIT | starlight |
 | `golang.org/x/crypto` | v0.58.0 | BSD-3-Clause | starlight |
 | `golang.org/x/net` | v0.62.0 | BSD-3-Clause | starlight, tensorfold-connect |
@@ -61,7 +61,7 @@ Apache-2.0 (`LICENSE`).
 Copyright 2014 Brave New Software Project, Inc.
 ```
 
-### github.com/beevik/etree v1.5.0
+### github.com/beevik/etree v1.7.0
 
 BSD-2-Clause (`LICENSE`).
 
@@ -166,7 +166,7 @@ MIT (`LICENSE`).
 Copyright (c) 2018 Jack Christensen
 ```
 
-### github.com/jonboulle/clockwork v0.2.2
+### github.com/jonboulle/clockwork v0.5.0
 
 Apache-2.0 (`LICENSE`).
 
@@ -265,7 +265,7 @@ This product includes software developed at
 SoundCloud Ltd. (http://soundcloud.com/).
 ```
 
-### github.com/russellhaering/goxmldsig v1.4.0
+### github.com/russellhaering/goxmldsig v1.6.1
 
 Apache-2.0 (`LICENSE`).
 

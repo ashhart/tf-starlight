@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	fyne.io/systray v1.12.2
-	github.com/beevik/etree v1.5.0
+	github.com/beevik/etree v1.7.0
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/crewjam/saml v0.5.1
 	github.com/go-jose/go-jose/v4 v4.1.7
@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/mattermost/xml-roundtrip-validator v0.1.0
 	github.com/prometheus/client_golang v1.25.0
-	github.com/russellhaering/goxmldsig v1.4.0
+	github.com/russellhaering/goxmldsig v1.6.1
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.49.0
@@ -25,7 +25,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.3 // indirect
-	github.com/jonboulle/clockwork v0.2.2 // indirect
+	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
