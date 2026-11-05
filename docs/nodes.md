@@ -152,7 +152,7 @@ work until an administrator approves it.
 | `--token` | One-time enrolment token (`sle_…`) |
 | `--ca-sha256` / `--ca-file` | How to recognise Starlight's CA during enrolment |
 | `--name` | Node name; defaults to the host name |
-| `--advertise` | `host:port` gateways dial; defaults to the host name and listen port |
+| `--advertise` | `host:port` gateways dial; defaults to the host name and port 7443, until `run` reports its own |
 | `--force` | Replace an existing identity |
 
 Certificates renew automatically when Starlight's `renew_after` passes or a third of their life remains. Renewal rotates the

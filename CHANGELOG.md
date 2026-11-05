@@ -12,4 +12,8 @@
   GO-2026-4753 (CVE-2026-33487): an XML signature listing more than one reference was checked against the wrong one, so a
   SAML response could be accepted without a valid signature over its contents. Anyone running an earlier commit with a
   SAML connection should update.
+- `starlight-node enroll` works as Starlight prints it. With no `--advertise` it sent an empty address, which Starlight
+  refused, so every enrolment needed the flag. It now reports the host name and port 7443 until `run` reports its own.
+- CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
+  printed command.
 - CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds.

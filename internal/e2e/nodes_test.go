@@ -1,8 +1,13 @@
 package e2e_test
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/ashhart/tf-starlight/internal/control"
+	"github.com/ashhart/tf-starlight/internal/node/enroll"
+	"github.com/ashhart/tf-starlight/internal/node/state"
 )
 
 // setNode mirrors the console and CLI node controls: status change, desired-state bump and a sync wake-up.
@@ -41,6 +46,30 @@ func (f *fleet) liveReplicas() int {
 	var n int
 	_ = f.pool.QueryRow(f.ctx, "SELECT count(*) FROM replicas WHERE desired = 'running' AND state NOT IN ('stopped', 'lost', 'failed')").Scan(&n)
 	return n
+}
+
+// TestEnrolWithOnlyWhatStarlightPrints runs what `starlight nodes token` prints, with no name or address of its own.
+func TestEnrolWithOnlyWhatStarlightPrints(t *testing.T) {
+	f := startStarlight(t, nil)
+	tok, _, err := control.CreateToken(f.ctx, f.pool, control.TokenSpec{AutoApprove: true, MaxClass: "confidential"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := state.Open(filepath.Join(t.TempDir(), "node"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, resp, err := enroll.Run(f.ctx, dir, enroll.Options{Server: f.nodeURL, Token: tok, CAPin: f.starlight.Trust.Fingerprint()})
+	if err != nil {
+		t.Fatalf("the printed command does not enrol a node: %v", err)
+	}
+	var address string
+	if err := f.pool.QueryRow(f.ctx, "SELECT address FROM nodes WHERE id = $1", id.NodeID).Scan(&address); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Status != "active" || address != enroll.DefaultAddress() {
+		t.Fatalf("status %q, address %q", resp.Status, address)
+	}
 }
 
 func TestNodeOnlineControls(t *testing.T) {

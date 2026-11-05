@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -79,6 +80,15 @@ func DefaultName() string {
 	return clean
 }
 
+// DefaultAddress is what a node reports until `run` reports its own: the hostname and the default listen port.
+func DefaultAddress() string {
+	h, err := os.Hostname()
+	if err != nil || h == "" {
+		h = "localhost"
+	}
+	return net.JoinHostPort(h, "7443")
+}
+
 // Run enrols the node and writes its identity, credentials and anchors to dir.
 func Run(ctx context.Context, dir *state.Dir, o Options) (state.Identity, wire.EnrollResponse, error) {
 	var resp wire.EnrollResponse
@@ -90,6 +100,9 @@ func Run(ctx context.Context, dir *state.Dir, o Options) (state.Identity, wire.E
 	}
 	if !namePattern.MatchString(o.Name) {
 		return state.Identity{}, resp, fmt.Errorf("node name %q must match %s", o.Name, namePattern)
+	}
+	if o.Address == "" {
+		o.Address = DefaultAddress()
 	}
 	if strings.TrimSpace(o.Token) == "" {
 		return state.Identity{}, resp, errors.New("an enrolment token is required")

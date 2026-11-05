@@ -25,6 +25,7 @@ a model).
 | `TestLocalFleetServesEveryProtocol` | Enrolment, placement of a warm deployment, engine start-up and readiness, chat through an alias, streaming with the usage chunk hidden, Anthropic Messages with `x-api-key`, `/v1/models` with aliases, `model_not_found`, usage records |
 | `TestConcurrencyLimitAndRevocation` | A concurrency limit holds across concurrent streams (one 200, one 429); a revoked key stops working within the cache window |
 | `TestSSOToConnectToInference` | OIDC sign-in through an IdP behind a private CA (`identity.ca_file`), an IdP group mapped to a project role, Connect's PKCE approval and token exchange, `/oauth/userinfo`, inference with the Connect token, and an Entra-shaped SCIM deactivation revoking that token |
+| `TestEnrolWithOnlyWhatStarlightPrints` | The enrolment command as `starlight nodes token` prints it, with no name or address of its own |
 | `TestConnectAgainstRealStarlight` | Connect's device sign-in and its local endpoint against the real Starlight |
 | `TestNodeOnlineControls` | Draining the only node stops its engine and requests answer 503; making it active again brings a ready replica back; revoking it stops routing |
 | `TestStoredResponsesBelongToTheirOwner` | Stored Responses can be read, continued and deleted only by their owner |
@@ -79,6 +80,20 @@ stopping short of loading a model.
 | `helm template` with ingress, autoscaling, ServiceMonitor, disruption budget and network policy enabled | 4.3.1 | 13 objects, no errors |
 | `promtool check rules deploy/prometheus/rules/starlight.yaml` | 3.15.1 | 14 rules |
 | `promtool check config` on `prometheus.yml`, and on the token example with `--syntax-only` | 3.15.1 | Valid |
+
+### The Compose quick start
+
+CI's `quickstart` job runs [`scripts/check-quickstart.sh`](../scripts/check-quickstart.sh) on every change. It takes the
+commands from the README and runs them as written on Linux: `bootstrap.sh`, `docker compose build`, `starlight init` and
+`docker compose up -d`. It then checks `/healthz` and `/readyz`, that the console redirects to a sign-in page naming the
+organisation, that the setup link opens, that discovery answers, that the API answers 401 to a missing and a bad key,
+and that `starlight doctor` and `starlight audit verify` pass. Last it runs the enrolment command Starlight prints and
+starts `starlight-node` with the engine `engine.json` pins, until the doctor sees the node online. It signs nobody in and
+runs no model.
+
+| Date | Versions | Result |
+| --- | --- | --- |
+| 5 November 2026 | Docker 29.4.2, Compose 5.1.3, Postgres 17.11, TensorFold 1.2.1 on Ubuntu | Passes. Writing it found that the printed enrolment command had never worked: with no `--advertise` it sent an empty address, which Starlight refused. Fixed, with `TestEnrolWithOnlyWhatStarlightPrints` |
 
 ### Security scans
 
@@ -185,9 +200,9 @@ into a new database with the master key and confirm `starlight doctor` and `star
 
 ### Images
 
-Docker was not available where these assets were written, so the images have not been built. Build
-`deploy/starlight/Dockerfile` (the CI workflow does, for amd64 and arm64) and the node CUDA image, and run the compose
-quick start once on Linux and once on macOS.
+CI builds `deploy/starlight/Dockerfile` for amd64 and arm64 and the node image for amd64, and [the quick start](#the-compose-quick-start)
+runs the amd64 Starlight image on Linux. Two things remain: run the quick start once on macOS, since hosted macOS runners
+have no Docker, and run the node image on a GPU, which the NVIDIA gate above covers.
 
 ### Independent security review
 

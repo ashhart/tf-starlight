@@ -16,8 +16,8 @@ behind a load balancer.
 
 ## Quick start with Docker Compose
 
-This brings up Starlight and Postgres on one machine for a trial. Production installs are covered in
-[docs/install.md](docs/install.md).
+This brings up Starlight and Postgres on one machine for a trial, and CI runs these commands as written on every change.
+Production installs are covered in [docs/install.md](docs/install.md).
 
 ```bash
 cd deploy/compose
