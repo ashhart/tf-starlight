@@ -67,6 +67,17 @@ chat model, 401 for a bad key, and one usage row per request all worked. The eng
 metrics reads under the scoped `starlight-read` key, and the console's dashboard showed live decode speeds of 230 to 408
 tokens a second with four requests running.
 
+`TestRealEngine` in `internal/e2e` repeats the core of that run on any machine, with built binaries as separate processes
+as a site runs them: set `STARLIGHT_REAL_ENGINE` to a TensorFold binary and `STARLIGHT_REAL_MODEL` to a chat checkpoint it
+serves. It enrols a real `starlight-node`, waits for the replica, then checks chat completions, streaming with the usage
+chunk and `[DONE]`, completions, streamed Anthropic Messages, Responses (store, read back, delete), `/v1/models`, 401 for
+a bad key and the usage rows, and stops the agent as a service manager would, since a killed agent leaves its engine
+running on macOS.
+
+| Date | Engine and machine | Result |
+| --- | --- | --- |
+| 5 November 2026 | TensorFold 1.2.3, Qwen3.5-2B 4-bit, Apple M3 Ultra | Passes. The replica was ready 6 seconds after enrolment, and 5 usage rows recorded 203 tokens |
+
 CI also runs the engine contract (`TestEngineContract` in `internal/node/engine`) against the TensorFold release that
 [`engine.json`](../engine.json) pins, on Linux and macOS, and every day against TensorFold's newest release. It checks
 the engine's version and that `tensorfold serve` takes every flag a node passes, for each backend the binary serves,
