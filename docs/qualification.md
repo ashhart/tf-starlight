@@ -175,7 +175,7 @@ others were dismissed on the Security tab, each with its reason:
 | Alert | Where | What it was |
 | --- | --- | --- |
 | `go/bad-redirect-check` | `internal/identity/session/guard.go` | Fixed. `SafeReturn` let `///evil.example/` through. It was not exploitable, since the one redirect it feeds, `http.Redirect`, cleans the path first, but now anything starting with two slashes is refused. CodeQL still flags the line, since it does not read `ContainsAny` as refusing a backslash, so that alert was dismissed too |
-| `go/cookie-secure-not-set` | `internal/console/request.go` | Fixed. The cookie that clears a one-time notice now has the same `Secure` flag as the one that set it |
+| `go/cookie-secure-not-set` | `internal/console/request.go` | Fixed. The cookies that set and clear a one-time notice now carry `Secure` whenever the session cookie does, including behind a load balancer that terminates TLS, where neither did (`TestFlashCookieFollowsTheSessionSetting`) |
 | `go/disabled-certificate-check`, 2 | `internal/crypto/pki/verify.go`, `internal/node/trust/trust.go` | Not a flaw. `InsecureSkipVerify` turns off only the hostname check, and `VerifyConnection` checks the chain and the SPIFFE ID on every connection |
 | `go/weak-sensitive-data-hashing`, 2 | `internal/crypto/secret/secret.go`, `internal/gateway/serve.go` | Not a flaw. Tokens carry 280 random bits, so they need no slow hash; the other hashes an id into a pseudonym for logs |
 | `go/zipslip` | `internal/node/artifacts/extract.go` | Not a flaw. `entryPath` refuses absolute and parent-relative names, links are refused, and tests cover both |

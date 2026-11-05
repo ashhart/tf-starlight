@@ -48,6 +48,9 @@ func New(pool *pgxpool.Pool, cfg Config) *Manager {
 	return &Manager{pool: pool, cfg: cfg, cookie: name}
 }
 
+// Secure reports whether browsers reach this site over HTTPS, so its cookies must say so.
+func (m *Manager) Secure() bool { return m.cfg.Secure }
+
 // Start describes a successful sign-in.
 type Start struct {
 	UserID       string

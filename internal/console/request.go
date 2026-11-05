@@ -49,7 +49,7 @@ func (c *Console) request(w http.ResponseWriter, r *http.Request) (*Request, err
 	q := &Request{W: w, R: r, User: u, Session: s, Grants: g, Groups: groups, c: c}
 	if f, err := r.Cookie(flashCookie); err == nil {
 		q.flash, _ = url.QueryUnescape(f.Value)
-		http.SetCookie(w, &http.Cookie{Name: flashCookie, Path: "/console", MaxAge: -1, HttpOnly: true, Secure: r.TLS != nil,
+		http.SetCookie(w, &http.Cookie{Name: flashCookie, Path: "/console", MaxAge: -1, HttpOnly: true, Secure: c.Sessions.Secure(),
 			SameSite: http.SameSiteStrictMode})
 	}
 	return q, nil
@@ -150,7 +150,7 @@ func (q *Request) render(status int, page, title string, data any, errMsg string
 func (q *Request) Redirect(path, notice string) error {
 	if notice != "" {
 		http.SetCookie(q.W, &http.Cookie{Name: flashCookie, Value: url.QueryEscape(notice), Path: "/console", MaxAge: 60, HttpOnly: true,
-			Secure: q.R.TLS != nil, SameSite: http.SameSiteStrictMode})
+			Secure: q.c.Sessions.Secure(), SameSite: http.SameSiteStrictMode})
 	}
 	http.Redirect(q.W, q.R, path, http.StatusSeeOther)
 	return nil

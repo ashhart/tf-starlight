@@ -82,3 +82,65 @@ func TestFrameworkGuardsAndRenders(t *testing.T) {
 		t.Fatalf("post %d", resp.StatusCode)
 	}
 }
+
+// TestFlashCookieFollowsTheSessionSetting serves plain HTTP, as behind a load balancer that terminates TLS.
+func TestFlashCookieFollowsTheSessionSetting(t *testing.T) {
+	for _, secure := range []bool{true, false} {
+		pool := testutil.DB(t)
+		ctx := context.Background()
+		u, _ := directory.CreateUser(ctx, pool, directory.NewUser{Email: "ivy@example.com", Source: "jit"})
+		if _, err := pool.Exec(ctx, "INSERT INTO role_bindings (id, role, subject_type, subject_id) VALUES ($1, 'auditor', 'user', $2)", ids.New(), u.ID); err != nil {
+			t.Fatal(err)
+		}
+		sessions := session.New(pool, session.Config{Secure: secure})
+		proxies, _ := httpx.NewProxies(nil)
+		c, err := New(&Console{Pool: pool, Sessions: sessions, Proxies: proxies, Org: func(context.Context) string { return "Example Corp" }, Version: "test"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.Handle("GET /console/probe", authz.AuditRead, func(q *Request) error {
+			q.Render("message", "Probe", messagePage{Heading: "Probe", Body: "ok"})
+			return nil
+		})
+		c.Handle("POST /console/probe", authz.AuditRead, func(q *Request) error { return q.Redirect("/console/probe", "Saved") })
+		mux := http.NewServeMux()
+		c.Register(mux)
+		srv := httptest.NewServer(mux)
+		defer srv.Close()
+		rec := httptest.NewRecorder()
+		s, err := sessions.Create(ctx, rec, httptest.NewRequest("GET", "/", nil), session.Start{UserID: u.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		flash := func(req *http.Request) *http.Cookie {
+			t.Helper()
+			req.AddCookie(rec.Result().Cookies()[0])
+			client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			for _, c := range resp.Cookies() {
+				if c.Name == flashCookie {
+					return c
+				}
+			}
+			t.Fatalf("%s %s answered %d with no notice cookie", req.Method, req.URL.Path, resp.StatusCode)
+			return nil
+		}
+		post, _ := http.NewRequest("POST", srv.URL+"/console/probe", strings.NewReader(url.Values{"_csrf": {s.CSRF()}}.Encode()))
+		post.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		post.Header.Set("Origin", srv.URL)
+		set := flash(post)
+		if set.Secure != secure {
+			t.Errorf("with session Secure %t the notice was set with Secure %t", secure, set.Secure)
+		}
+		get, _ := http.NewRequest("GET", srv.URL+"/console/probe", nil)
+		get.AddCookie(set)
+		cleared := flash(get)
+		if cleared.Secure != secure || cleared.MaxAge >= 0 {
+			t.Errorf("with session Secure %t the notice was cleared with Secure %t and MaxAge %d", secure, cleared.Secure, cleared.MaxAge)
+		}
+	}
+}
