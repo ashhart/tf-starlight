@@ -1,0 +1,49 @@
+# Weekly and grouped, since these pull requests share runners with everything else on this account.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: deps
+    groups:
+      go:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directories:
+      - /deploy/starlight
+      - /deploy/node/container
+    schedule:
+      interval: weekly
+      day: tuesday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: images
+    groups:
+      docker:
+        patterns: ["*"]
+  - package-ecosystem: docker-compose
+    directory: /deploy/compose
+    schedule:
+      interval: weekly
+      day: tuesday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: images
+    groups:
+      compose:
+        patterns: ["*"]

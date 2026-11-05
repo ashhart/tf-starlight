@@ -41,3 +41,4 @@
   first run found both; `http.Redirect` already kept the first from leaving the site.
 - CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds, and CodeQL for Go on every
   pull request, on `main` and weekly.
+- Dependabot proposes weekly updates to Go modules, Actions and container images, grouped so they stay few.

@@ -144,7 +144,7 @@ CI's `windows` job runs on the hosted Windows Server 2025 runner, with Go 1.27.3
 
 | Date | Versions | Result |
 | --- | --- | --- |
-| 5 November 2026 | Windows Server 2025, Go 1.27.3, Postgres 17.11 | Passes. The first native run found four things, all fixed. A `path` artifact could not name a Windows path such as `D:\models\qwen`. An administrator running any `starlight-node` command added their own account to the state directory's ACL, where it stayed if they later lost the role. The service's log went nowhere, since a service has no stderr. `docs/nodes.md` named a Windows engine that no TensorFold release has |
+| 5 November 2026 | Windows Server 2025, Go 1.27.3, Postgres 17.11 | Passes. Writing the job found four things, all fixed. A `path` artifact could not name a Windows path such as `D:\models\qwen`. An administrator running any `starlight-node` command added their own account to the state directory's ACL, where it stayed if they later lost the role. The service's log went nowhere, since a service has no stderr. `docs/nodes.md` named a Windows engine that no TensorFold release has |
 
 ### Linux desktop
 
@@ -174,6 +174,7 @@ runs no model.
 ([`govulncheck.yml`](../.github/workflows/govulncheck.yml)). It fails when Starlight's code can reach a known vulnerability.
 CodeQL's extended security queries for Go run on every pull request, on `main` and every week
 ([`codeql.yml`](../.github/workflows/codeql.yml)), over the Linux build, and report to the repository's Security tab.
+[Dependabot](../.github/dependabot.yml) proposes weekly updates to Go modules, Actions and container images.
 
 | Date | Tool | Result |
 | --- | --- | --- |
