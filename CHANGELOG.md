@@ -1,10 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-rc.1
+
+The first pre-release. It is not qualified for production: [docs/qualification.md](docs/qualification.md#open-gates) lists
+the gates that still need real hardware, identity tenants or an independent review.
 
 - Starlight moves here from [ashhart/TensorFold](https://github.com/ashhart/TensorFold), where it landed in
   ashhart/TensorFold#1922, with its history. The Go module is now `github.com/ashhart/tf-starlight`.
-- [`engine.json`](engine.json) pins TensorFold 1.2.1, the engine release Starlight is tested with. CI checks the engine
+- [`engine.json`](engine.json) pins TensorFold 1.2.3, the engine release Starlight is tested with. CI checks the engine
   contract against it on Linux and macOS, and against TensorFold's newest release every day. The node container image
   installs the pinned release instead of taking a version and SHA-256 at build time.
 - `.gitignore` keeps the Compose quick start's generated `secrets/` and `.env` out of commits.
@@ -21,9 +24,9 @@
 - `starlight-node enroll` works as Starlight prints it. With no `--advertise` it sent an empty address, which Starlight
   refused, so every enrolment needed the flag. It now reports the host name and port 7443 until `run` reports its own.
 - A release workflow builds every binary, image and chart from a `v*` tag, with checksums and build provenance, and a manual
-  run does all of it and publishes nothing. No release has been published yet. Images and the chart will live under
-  `ghcr.io/ashhart`, so Compose's local image and the chart's default image now use that name. The node image is built for
-  arm64 too, cross-compiles its agent, and carries its version.
+  run does all of it and publishes nothing. Images and the chart live under `ghcr.io/ashhart`, so Compose's local image and
+  the chart's default image now use that name. The node image is built for arm64 too, cross-compiles its agent, and carries
+  its version.
 - A standby instance checks the controller lease every second, not every 5, so a new leader takes over within about 15
   seconds of losing the old one, where it could take 20.
 - CI kills and pauses a real controller leader and restores a backup into a new database, as the high availability and

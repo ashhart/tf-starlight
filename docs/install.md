@@ -5,9 +5,9 @@ them. Choose Docker Compose for a single host, Helm for Kubernetes, or the syste
 
 ## From a release
 
-**No release has been published yet; the first is coming.** Until it is, build from a checkout of this repository, which
-the sections below describe: `docker compose build` makes the image for Compose, and `go build ./cmd/...` with Go 1.27.3 or
-newer makes the binaries. The rest of this section says what each release will hold and how to use it.
+**Releases so far are pre-releases, not qualified for production**: [qualification.md](qualification.md#open-gates) lists the
+gates still open. A checkout works too, as the sections below describe: `docker compose build` makes the image for Compose,
+and `go build ./cmd/...` with Go 1.27.3 or newer makes the binaries. Each release holds:
 
 | What | Where | Holds |
 | --- | --- | --- |
@@ -138,9 +138,8 @@ kubectl --namespace starlight create secret generic starlight-secrets \
   --from-literal=metrics-token="$(openssl rand -hex 24)"
 ```
 
-Then install. The chart's default image is the one published for its version, and none is published yet, so until the
-first release build `deploy/starlight/Dockerfile`, push it to your own registry and add `--set image.repository=...` and
-`--set image.tag=...`.
+Then install. The chart's default image is the one published for its version. To run an image you built from
+`deploy/starlight/Dockerfile`, push it to your own registry and add `--set image.repository=...` and `--set image.tag=...`.
 
 ```bash
 helm install starlight deploy/helm/starlight --namespace starlight \
