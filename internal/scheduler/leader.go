@@ -15,7 +15,12 @@ import (
 // ErrFenced means a newer leader exists; the stale one must stop writing.
 var ErrFenced = errors.New("scheduler: lost leadership")
 
-const leaseTTL = "15 seconds"
+const (
+	leaseTTL   = "15 seconds"
+	renewEvery = 5 * time.Second
+	// standbyPoll is short so a standby takes over within a second of the lease running out.
+	standbyPoll = time.Second
+)
 
 // Elector competes for the controller lease.
 type Elector struct {
@@ -39,9 +44,13 @@ func (e *Elector) acquire(ctx context.Context) (int64, bool, error) {
 // Run calls lead with a context that is cancelled as soon as the lease cannot be renewed.
 func (e *Elector) Run(ctx context.Context, lead func(ctx context.Context, epoch int64)) {
 	for ctx.Err() == nil {
-		epoch, ok, _ := e.acquire(ctx)
+		epoch, ok, err := e.acquire(ctx)
+		if err != nil {
+			sleep(ctx, renewEvery)
+			continue
+		}
 		if !ok {
-			sleep(ctx, 5*time.Second)
+			sleep(ctx, standbyPoll)
 			continue
 		}
 		lctx, cancel := context.WithCancel(ctx)
@@ -51,7 +60,7 @@ func (e *Elector) Run(ctx context.Context, lead func(ctx context.Context, epoch 
 			lead(lctx, epoch)
 		}()
 		for lctx.Err() == nil {
-			sleep(lctx, 5*time.Second)
+			sleep(lctx, renewEvery)
 			if next, ok, err := e.acquire(ctx); err != nil || !ok || next != epoch {
 				cancel()
 			}

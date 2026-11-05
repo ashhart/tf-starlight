@@ -33,6 +33,7 @@ a model).
 | `TestFrontierPlanLocalExecution` | A plan drafted by a provider route, the egress hash matching the bytes the provider received, approval by hash, a one-time task token, local execution, and the task token unable to reach the frontier model |
 | `TestCredentialsNeverLeaveAndOfflineMeansOffline` | A credential in a prompt never reaches a provider and is audited; offline mode blocks cloud routes while local inference works |
 | `TestTensorParallelGroupAcrossTwoNodes` | A `tensor_parallel` deployment with `nodes: 2` placed on two enrolled nodes: rank 0 on the lead and rank 1 on the other meet at the lead's rendezvous address, chat is served through rank 0, and killing rank 1 brings the group back with a new process |
+| `TestHighAvailabilityDrills` (`STARLIGHT_DRILL=1`) | [Killing and pausing the leader, and restoring a backup](#high-availability-and-recovery-drills), with real processes |
 | `TestEightThousandUsers` (`STARLIGHT_SCALE=1`) | 8,000 distinct users, each with an API key and project membership, each served exactly once through one or more gateways and 128-slot replicas: no errors, no leaked leases, one usage row per user |
 
 ### The 8,000-user run
@@ -94,6 +95,30 @@ with the first tag.
 | --- | --- | --- |
 | 5 November 2026 | Manual dry run of `0.0.0-dryrun` from `main`, with TensorFold 1.2.1 in the node image | Every job passed: 15 archives, the deployment files, the chart and `SHA256SUMS`; every binary printed its version on Linux, macOS and Windows; both images started on both architectures; no release, tag or package appeared |
 
+### High availability and recovery drills
+
+CI's `drills` job runs `TestHighAvailabilityDrills` (`STARLIGHT_DRILL=1`) on every change, with built binaries as separate
+processes, Postgres 17, a TCP balancer before the node listeners, a real `starlight-node` and a fake engine:
+
+- **The leader dies.** It kills the instance `starlight_controller_epoch` names with SIGKILL. The other takes over at the
+  next epoch within 17 seconds, the lease and a standby's one-second poll with a second of slack. Requests keep flowing
+  through the survivor meanwhile. A deployment added while nothing leads is placed once, and the deployment already
+  placed keeps its replica. A watcher sampling the database every 100 ms never sees two live replicas of either.
+- **The leader only pauses.** It stops a leader with SIGSTOP. A standby takes over within the same 17 seconds, and when
+  the old leader wakes it reports epoch 0 within 15 seconds. Still no duplicate placement.
+- **The site is lost.** It takes `pg_dump --format=custom`, kills every instance and restores into a new database with
+  `pg_restore`. Under the wrong master key `starlight doctor` fails on the keys. Under the right one a new instance
+  starts, leads, `starlight doctor` and `starlight audit verify` pass, and a request is served through it with the same
+  API key and node.
+
+| Date | Versions | Result |
+| --- | --- | --- |
+| 5 November 2026 | Postgres 17.11, `pg_dump` and `pg_restore` 17.11, Go 1.27.3 on Ubuntu | Passes. A new epoch 14.7 seconds after the kill and 15.0 after the pause, never two live replicas of a deployment, and the restored database passes the doctor and the audit check and serves a request |
+
+Writing it found that a standby polled the lease every 5 seconds, so a new leader could take 20 seconds, not the "about
+15" this page and the operations guide promised. A standby now polls every second. Failing over Postgres itself is
+part of [the load gate](#load-at-the-8000-user-profile), which needs real hosts.
+
 ### The Compose quick start
 
 CI's `quickstart` job runs [`scripts/check-quickstart.sh`](../scripts/check-quickstart.sh) on every change. It takes the
@@ -124,7 +149,7 @@ others were dismissed on the Security tab, each with its reason:
 
 | Alert | Where | What it was |
 | --- | --- | --- |
-| `go/bad-redirect-check` | `internal/identity/session/guard.go` | Fixed. `SafeReturn` let `///evil.example/` through. It was not exploitable, since the one redirect it feeds, `http.Redirect`, cleans the path first, but now anything starting with two slashes is refused |
+| `go/bad-redirect-check` | `internal/identity/session/guard.go` | Fixed. `SafeReturn` let `///evil.example/` through. It was not exploitable, since the one redirect it feeds, `http.Redirect`, cleans the path first, but now anything starting with two slashes is refused. CodeQL still flags the line, since it does not read `ContainsAny` as refusing a backslash, so that alert was dismissed too |
 | `go/cookie-secure-not-set` | `internal/console/request.go` | Fixed. The cookie that clears a one-time notice now has the same `Secure` flag as the one that set it |
 | `go/disabled-certificate-check`, 2 | `internal/crypto/pki/verify.go`, `internal/node/trust/trust.go` | Not a flaw. `InsecureSkipVerify` turns off only the hostname check, and `VerifyConnection` checks the chain and the SPIFFE ID on every connection |
 | `go/weak-sensitive-data-hashing`, 2 | `internal/crypto/secret/secret.go`, `internal/gateway/serve.go` | Not a flaw. Tokens carry 280 random bits, so they need no slow hash; the other hashes an id into a pseudonym for logs |
@@ -221,11 +246,6 @@ lengths. Drive it with any OpenAI-compatible load generator through two
 or more Starlight instances against real nodes, and record queue wait, time to first byte, errors by code, Postgres CPU and
 connections, and gateway CPU and memory. Confirm limits are never exceeded and that killing a gateway, killing a node and
 failing over Postgres stay within your error budget.
-
-### High availability and recovery drills
-
-Kill the controller leader and confirm a new epoch within about 15 seconds with no duplicate placement. Restore a backup
-into a new database with the master key and confirm `starlight doctor` and `starlight audit verify` pass.
 
 ### Images
 

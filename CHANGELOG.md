@@ -18,6 +18,10 @@
   run does all of it and publishes nothing. No release has been published yet. Images and the chart will live under
   `ghcr.io/ashhart`, so Compose's local image and the chart's default image now use that name. The node image is built for
   arm64 too, cross-compiles its agent, and carries its version.
+- A standby instance checks the controller lease every second, not every 5, so a new leader takes over within about 15
+  seconds of losing the old one, where it could take 20.
+- CI kills and pauses a real controller leader and restores a backup into a new database, as the high availability and
+  recovery gate asks. That gate is closed.
 - CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
   printed command.
 - Security: post-login redirects refuse anything starting with two slashes, and the cookie that clears a console notice has

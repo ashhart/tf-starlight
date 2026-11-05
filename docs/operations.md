@@ -66,7 +66,8 @@ Run two or more instances behind a load balancer. Every role is safe to run on s
 - **Gateways** share all admission state through Postgres. A request holds a lease that its instance heartbeats every
   15 seconds while it still holds it; if the instance dies, or loses track of a lease, the lease expires after 60
   seconds, its reservation is charged in full and the slot frees.
-- **The controller** runs on one instance at a time under a 15-second Postgres lease renewed every 5 seconds. Every
+- **The controller** runs on one instance at a time under a 15-second Postgres lease renewed every 5 seconds. A standby
+  checks the lease every second, so a new leader takes over within about 15 seconds of losing the old one. Every
   scheduling write checks the lease's fencing epoch in the same transaction, so a paused former leader cannot overwrite
   its successor's decisions. `starlight_controller_epoch` is non-zero only on the current leader.
 - **Console, SSO and SCIM** keep their state in Postgres; sessions work on any instance.
