@@ -10,13 +10,13 @@ image's files, which carry their own licences.
 | --- | --- | --- | --- |
 | Go standard library | 1.27 | BSD-3-Clause | starlight, starlight-node, tensorfold-connect |
 | `fyne.io/systray` | v1.12.2 | Apache-2.0 | tensorfold-connect |
-| `github.com/beevik/etree` | v1.7.0 | BSD-2-Clause | starlight |
+| `github.com/beevik/etree` | v1.8.1 | BSD-2-Clause | starlight |
 | `github.com/beorn7/perks` | v1.0.1 | MIT | starlight |
 | `github.com/cespare/xxhash/v2` | v2.3.0 | MIT | starlight |
 | `github.com/coreos/go-oidc/v3` | v3.21.0 | Apache-2.0 | starlight |
 | `github.com/crewjam/saml` | v0.5.1 | BSD-2-Clause | starlight |
-| `github.com/go-jose/go-jose/v4` | v4.1.7 | Apache-2.0 | starlight |
-| `github.com/godbus/dbus/v5` | v5.1.0 | BSD-2-Clause | tensorfold-connect |
+| `github.com/go-jose/go-jose/v4` | v4.1.8 | Apache-2.0 | starlight |
+| `github.com/godbus/dbus/v5` | v5.2.4 | BSD-2-Clause | tensorfold-connect |
 | `github.com/hashicorp/mdns` | v1.0.7 | MIT | starlight, tensorfold-connect |
 | `github.com/jackc/pgpassfile` | v1.0.0 | MIT | starlight |
 | `github.com/jackc/pgservicefile` | v0.0.0-20240606120523-5a60cdf6a761 | MIT | starlight |
@@ -61,7 +61,7 @@ Apache-2.0 (`LICENSE`).
 Copyright 2014 Brave New Software Project, Inc.
 ```
 
-### github.com/beevik/etree v1.7.0
+### github.com/beevik/etree v1.8.1
 
 BSD-2-Clause (`LICENSE`).
 
@@ -107,7 +107,7 @@ BSD-2-Clause (`LICENSE`).
 Copyright (c) 2015, Ross Kinder
 ```
 
-### github.com/go-jose/go-jose/v4 v4.1.7
+### github.com/go-jose/go-jose/v4 v4.1.8
 
 Apache-2.0 (`LICENSE`).
 
@@ -116,9 +116,10 @@ The licence file has no copyright line; these are from the module's source heade
 ```text
 Copyright 2014 Square Inc.
 Copyright 2016 Zbigniew Mandziejewicz
+Copyright 2026 The Go JOSE Authors
 ```
 
-### github.com/godbus/dbus/v5 v5.1.0
+### github.com/godbus/dbus/v5 v5.2.4
 
 BSD-2-Clause (`LICENSE`).
 
