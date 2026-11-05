@@ -135,6 +135,54 @@ jobs:
       - name: node agent, engine contract and Connect tests
         run: go test -race -count=1 ./internal/node/... ./internal/connect/... ./internal/mdns/... ./cmd/...
 
+  windows:
+    timeout-minutes: 40
+    runs-on: windows-latest
+    env:
+      STARLIGHT_TEST_DATABASE_URL: postgres://postgres:root@localhost:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache-dependency-path: go.sum
+      - name: start the runner's Postgres
+        shell: pwsh
+        run: |
+          $service = Get-Service -Name 'postgresql*' | Select-Object -First 1
+          Set-Service -Name $service.Name -StartupType Manual
+          Start-Service -Name $service.Name
+          & "$env:PGBIN\psql.exe" --version
+          & "$env:PGBIN\pg_isready.exe" -h localhost
+      - name: build with the tray and Credential Manager storage
+        run: go build ./cmd/...
+      - name: node agent and Connect tests
+        run: go test -race -count=1 ./internal/node/... ./internal/connect/... ./internal/mdns/... ./cmd/...
+      - name: a fleet on Windows, with a fake engine
+        run: go test -count=1 -run "TestLocalFleetServesEveryProtocol|TestConcurrencyLimitAndRevocation|TestNodeOnlineControls|TestEnrolWithOnlyWhatStarlightPrints|TestLiveThroughputReachesStarlight|TestStoredResponsesBelongToTheirOwner" ./internal/e2e
+      - name: install-windows.ps1, the service and the state directory's ACL
+        env:
+          STARLIGHT_DRILL: "1"
+        run: go test -count=1 -run TestWindowsNodeService -v ./internal/e2e
+      - name: Connect's credentials in Credential Manager, and Group Policy
+        env:
+          TENSORFOLD_CONNECT_PLATFORM_STORE_TEST: "1"
+          TENSORFOLD_CONNECT_POLICY_TEST: "1"
+        run: go test -count=1 -run "TestPlatformStore|TestTokensLandInCredentialManager|TestShippedPolicyLocksTheServer" -v ./internal/connect/store ./cmd/tensorfold-connect
+      - name: the tray starts and stays up
+        shell: pwsh
+        run: |
+          go build -o "$env:RUNNER_TEMP\tensorfold-connect.exe" ./cmd/tensorfold-connect
+          $env:TENSORFOLD_CONNECT_STORE = 'file'
+          $tray = Start-Process -PassThru -FilePath "$env:RUNNER_TEMP\tensorfold-connect.exe" -ArgumentList tray `
+            -RedirectStandardError "$env:RUNNER_TEMP\tray.err" -RedirectStandardOutput "$env:RUNNER_TEMP\tray.out"
+          Start-Sleep -Seconds 8
+          Get-Content "$env:RUNNER_TEMP\tray.err", "$env:RUNNER_TEMP\tray.out"
+          if ($tray.HasExited) { throw "the tray exited with code $($tray.ExitCode)" }
+          Stop-Process -Id $tray.Id
+
   cross:
     timeout-minutes: 20
     runs-on: ubuntu-latest

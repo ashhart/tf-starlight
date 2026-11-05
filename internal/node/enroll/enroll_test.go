@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -40,12 +41,12 @@ func TestEnrolWithCAPinThenSyncAndRenew(t *testing.T) {
 		t.Fatalf("identity %+v resp %+v", id, resp)
 	}
 	fi, _ := os.Stat(d.Root)
-	if fi.Mode().Perm() != 0o700 {
+	if runtime.GOOS != "windows" && fi.Mode().Perm() != 0o700 {
 		t.Fatalf("state dir mode %v", fi.Mode().Perm())
 	}
 	for _, f := range []string{"node.json", "node.pem", "workload-ca.pem", "permit-keys.json"} {
 		fi, err := os.Stat(d.Path(f))
-		if err != nil || fi.Mode().Perm() != 0o600 {
+		if err != nil || runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600 {
 			t.Fatalf("%s: %v %v", f, err, fi)
 		}
 	}

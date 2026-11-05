@@ -119,6 +119,31 @@ Writing it found that a standby polled the lease every 5 seconds, so a new leade
 15" this page and the operations guide promised. A standby now polls every second. Failing over Postgres itself is
 part of [the load gate](#load-at-the-8000-user-profile), which needs real hosts.
 
+### Windows
+
+CI's `windows` job runs on the hosted Windows Server 2025 runner, with Go 1.27.3 and its Postgres 17.11:
+
+- The node agent and Connect suites, with the race detector. The tests that render systemd units and launchd plists stay on
+  Linux and macOS.
+- The fleet tests in `internal/e2e` that exercise the agent: enrolment, a replica under a fake engine, chat, streaming,
+  limits, node controls and stored Responses.
+- `TestWindowsNodeService` (`STARLIGHT_DRILL=1`), which runs `deploy/node/install-windows.ps1` as an administrator against a
+  real Starlight. It checks that the service starts automatically as LocalSystem with restart-on-failure actions, and that
+  the firewall rule exists. It serves a request through the service with a fake engine. `icacls` and a walk of every path in
+  the state directory find only SYSTEM and Administrators, before and after an administrator runs `starlight-node status`.
+  Killing the agent ends its engine and the service manager restarts it; a clean stop and start serve again; uninstalling
+  removes the service and keeps the state.
+- `TestPlatformStore` and `TestTokensLandInCredentialManager`, which store a value through Connect's store and find it with
+  `cmdkey`, without signing in.
+- `TestShippedPolicyLocksTheServer`, which imports `deploy/mdm/windows/tensorfold-connect.reg` as Group Policy would write it:
+  `status` shows the managed server and `login --server` refuses another. `TestADMXSetsWhatConnectReads`, on every platform,
+  keeps the ADMX and the code naming the same values.
+- The tray starts and is still running 8 seconds later.
+
+| Date | Versions | Result |
+| --- | --- | --- |
+| 5 November 2026 | Windows Server 2025, Go 1.27.3, Postgres 17.11 | Passes. The first native run found four things, all fixed. A `path` artifact could not name a Windows path such as `D:\models\qwen`. An administrator running any `starlight-node` command added their own account to the state directory's ACL, where it stayed if they later lost the role. The service's log went nowhere, since a service has no stderr. `docs/nodes.md` named a Windows engine that no TensorFold release has |
+
 ### The Compose quick start
 
 CI's `quickstart` job runs [`scripts/check-quickstart.sh`](../scripts/check-quickstart.sh) on every change. It takes the
@@ -215,10 +240,9 @@ starts both ranks and serves.
 
 ### Windows nodes and clients
 
-On Windows Server 2022 or Windows 11: install with `deploy/node/install-windows.ps1`, confirm the service starts at boot,
-the state directory's ACL admits only the service account and administrators (`icacls`), and an engine serves. For
-Connect, confirm tokens land in Credential Manager, the tray runs, and Group Policy or Intune values from the ADMX lock the
-settings.
+CI covers what a runner can, [above](#windows). Three things need a real machine, on Windows 11 as well as Server: reboot and
+confirm the service starts without anyone logged in; serve with a real engine, which needs TensorFold built for Windows
+since no release has one; and see the tray's icon, and apply the ADMX through Group Policy or Intune, not the registry.
 
 ### Linux desktop
 

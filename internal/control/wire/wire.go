@@ -116,6 +116,7 @@ var (
 	repoPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,95}/[A-Za-z0-9][A-Za-z0-9._-]{0,95}$`)
 	revisionPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
 	shaPattern      = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	windowsAbsolute = regexp.MustCompile(`^[A-Za-z]:[\\/]`)
 )
 
 // Key is a stable identifier for caches and placement affinity.
@@ -141,7 +142,7 @@ func (a Artifact) Validate() error {
 			return errors.New("hf artifacts must pin a 40-character commit revision")
 		}
 	case "path":
-		if !strings.HasPrefix(a.Path, "/") || strings.Contains(a.Path, "..") || strings.ContainsAny(a.Path, "\x00\n") {
+		if !strings.HasPrefix(a.Path, "/") && !windowsAbsolute.MatchString(a.Path) || strings.Contains(a.Path, "..") || strings.ContainsAny(a.Path, "\x00\n") {
 			return fmt.Errorf("artifact path %q must be absolute and clean", a.Path)
 		}
 	case "url":

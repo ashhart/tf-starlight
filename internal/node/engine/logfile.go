@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"io"
 	"os"
 	"sync"
 )
@@ -13,6 +14,9 @@ type rotating struct {
 	f    *os.File
 	size int64
 }
+
+// OpenLog opens an append-only log that rotates, keeping the current file and two predecessors.
+func OpenLog(path string) (io.WriteCloser, error) { return openRotating(path, 0) }
 
 func openRotating(path string, max int64) (*rotating, error) {
 	if max <= 0 {

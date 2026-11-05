@@ -9,6 +9,7 @@ func TestArtifactValidate(t *testing.T) {
 	good := []Artifact{
 		{Kind: "hf", Repo: "TensorFold/Qwen3.8-27B-MLX-4bit", Revision: strings.Repeat("a", 40)},
 		{Kind: "path", Path: "/models/qwen"},
+		{Kind: "path", Path: `D:\models\qwen`},
 		{Kind: "url", URL: "https://mirror.example/q.tar", SHA256: strings.Repeat("0", 64)},
 	}
 	for _, a := range good {
@@ -21,6 +22,9 @@ func TestArtifactValidate(t *testing.T) {
 		{Kind: "hf", Repo: "../etc", Revision: strings.Repeat("a", 40)},
 		{Kind: "path", Path: "models/q"},
 		{Kind: "path", Path: "/models/../etc"},
+		{Kind: "path", Path: `models\qwen`},
+		{Kind: "path", Path: `D:models`},
+		{Kind: "path", Path: `D:\models\..\etc`},
 		{Kind: "url", URL: "http://mirror.example/q.tar", SHA256: strings.Repeat("0", 64)},
 		{Kind: "url", URL: "https://mirror.example/q.tar"},
 		{Kind: "shell", Path: "/bin/sh"},

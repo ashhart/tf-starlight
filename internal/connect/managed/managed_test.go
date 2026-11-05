@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -93,5 +95,36 @@ func TestShippedLinuxSampleParses(t *testing.T) {
 	}
 	if p.ServerURL == "" || len(p.Unknown) != 0 || p.Validate() != nil || !p.ServerLocked() {
 		t.Fatalf("sample policy %+v", p)
+	}
+}
+
+// TestADMXSetsWhatConnectReads keeps the Group Policy template and the settings Connect reads naming the same values.
+func TestADMXSetsWhatConnectReads(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "deploy", "mdm", "windows", "TensorFoldConnect.admx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]bool{}
+	for _, m := range regexp.MustCompile(`valueName="([^"]+)"`).FindAllSubmatch(data, -1) {
+		found[string(m[1])] = true
+	}
+	policy := reflect.TypeFor[Policy]()
+	for i := range policy.NumField() {
+		name := policy.Field(i).Tag.Get("json")
+		if name == "-" {
+			continue
+		}
+		if !found[name] {
+			t.Errorf("the ADMX does not set %s", name)
+		}
+		delete(found, name)
+	}
+	if len(found) > 0 {
+		t.Errorf("the ADMX sets values Connect does not read: %v", found)
+	}
+	for _, m := range regexp.MustCompile(`key="([^"]+)"`).FindAllSubmatch(data, -1) {
+		if string(m[1]) != `SOFTWARE\Policies\TensorFold\Connect` {
+			t.Errorf("the ADMX writes to %s", m[1])
+		}
 	}
 }

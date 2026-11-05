@@ -8,7 +8,7 @@ traffic on a mutually authenticated listener. It never runs as root and never ex
 | --- | --- | --- | --- |
 | macOS 13+ on Apple silicon | launchd LaunchDaemon, dedicated user | Homebrew `tensorfold` or the release archive | `/Library/Application Support/TensorFold/Starlight Node` |
 | Linux x86_64 or aarch64, glibc 2.28+ | systemd unit or container | Release archive `bin/tensorfold-native` | `/var/lib/starlight-node` |
-| Windows | Service control manager (LocalSystem) | TensorFold engine for Windows | `%ProgramData%\TensorFold\StarlightNode` |
+| Windows | Service control manager (LocalSystem) | TensorFold built for Windows; no release has one yet | `%ProgramData%\TensorFold\StarlightNode` |
 
 ## How it works
 
@@ -133,8 +133,11 @@ From an elevated PowerShell in the folder holding `starlight-node.exe`:
 
 [`deploy/node/install-windows.ps1`](../deploy/node/install-windows.ps1) copies the agent to Program Files, enrols it,
 registers an automatic service with restart-on-failure recovery and opens inbound TCP 7443 for the agent only. The state
-directory's ACL grants SYSTEM, Administrators and the enrolling account. Engines run in a kill-on-close job object, so
-none outlives the agent.
+directory's ACL grants SYSTEM and Administrators. The service logs to `starlight-node.log` in the state directory, and each
+engine to `engine.log` in its replica directory. Engines run in a kill-on-close job object, so none outlives the agent.
+
+TensorFold has no Windows release yet: `-Engine` names an engine you built from its Windows guide. Artifacts of kind `path`
+take a Windows path such as `D:\models\qwen`.
 
 ## Enrolment
 

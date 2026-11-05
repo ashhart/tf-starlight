@@ -84,7 +84,7 @@ func TestPlatformStore(t *testing.T) {
 	}
 	s, err := openPlatform()
 	if err != nil {
-		t.Skip(err)
+		t.Fatalf("the real credential store was asked for and cannot open: %v", err)
 	}
 	exercise(t, s, "test-entry")
 }

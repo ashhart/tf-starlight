@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// EnsurePrivateDir creates path and replaces its DACL with SYSTEM, Administrators and this account only.
+// EnsurePrivateDir creates path and limits its DACL to SYSTEM and Administrators, and this account if it is neither.
 func EnsurePrivateDir(path string) error {
 	if err := os.MkdirAll(path, 0o700); err != nil {
 		return err
@@ -21,11 +21,22 @@ func EnsurePrivateDir(path string) error {
 	if !fi.IsDir() {
 		return fmt.Errorf("%s is not a directory", path)
 	}
-	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	sddl := "D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+	admins, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
 	if err != nil {
 		return err
 	}
-	sddl := "D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;" + user.User.Sid.String() + ")"
+	admin, err := windows.Token(0).IsMember(admins)
+	if err != nil {
+		return err
+	}
+	if !admin {
+		user, err := windows.GetCurrentProcessToken().GetTokenUser()
+		if err != nil {
+			return err
+		}
+		sddl += "(A;OICI;FA;;;" + user.User.Sid.String() + ")"
+	}
 	sd, err := windows.SecurityDescriptorFromString(sddl)
 	if err != nil {
 		return err

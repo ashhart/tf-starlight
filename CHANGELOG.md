@@ -22,6 +22,11 @@
   seconds of losing the old one, where it could take 20.
 - CI kills and pauses a real controller leader and restores a backup into a new database, as the high availability and
   recovery gate asks. That gate is closed.
+- Windows nodes: a `path` artifact can name a Windows path. The state directory's ACL admits only SYSTEM and Administrators,
+  where an administrator running any `starlight-node` command used to add their own account. The service logs to
+  `starlight-node.log` in the state directory, where its log used to go nowhere.
+- CI runs on Windows: the node agent and Connect suites, fleet tests, `install-windows.ps1` and the service it installs, the
+  state directory's ACL, Credential Manager, the shipped Group Policy values and the tray.
 - CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
   printed command.
 - Security: post-login redirects refuse anything starting with two slashes, and the cookie that clears a console notice has

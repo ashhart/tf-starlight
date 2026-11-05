@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -11,8 +12,10 @@ import (
 
 	"github.com/ashhart/tf-starlight/internal/cli"
 	"github.com/ashhart/tf-starlight/internal/node/agent"
+	"github.com/ashhart/tf-starlight/internal/node/engine"
 	"github.com/ashhart/tf-starlight/internal/node/enroll"
 	"github.com/ashhart/tf-starlight/internal/node/facts"
+	"github.com/ashhart/tf-starlight/internal/node/service"
 	"github.com/ashhart/tf-starlight/internal/node/state"
 )
 
@@ -77,8 +80,26 @@ func runCommand() *cli.Command {
 				return err
 			}
 			cfg.Env = env
-			cfg.Logger = newLogger(os.Stderr, level, format)
-			return agent.Run(ctx, cfg)
+			out := io.Writer(os.Stderr)
+			if service.IsService() {
+				// The service control manager gives a service no stderr, so its log goes in the private state directory.
+				dir, err := state.Open(cfg.StateDir)
+				if err != nil {
+					return err
+				}
+				log, err := engine.OpenLog(dir.Path("starlight-node.log"))
+				if err != nil {
+					return err
+				}
+				defer log.Close()
+				out = log
+			}
+			cfg.Logger = newLogger(out, level, format)
+			err := agent.Run(ctx, cfg)
+			if err != nil && service.IsService() {
+				cfg.Logger.Error("the agent stopped", "error", err)
+			}
+			return err
 		},
 	}
 }

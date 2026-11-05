@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -87,7 +88,7 @@ func TestWriteKeysIsPrivateAndScoped(t *testing.T) {
 		t.Fatal(err)
 	}
 	fi, _ := os.Stat(k.File)
-	if fi.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600 {
 		t.Fatalf("key file mode %v", fi.Mode().Perm())
 	}
 	b, _ := os.ReadFile(k.File)
