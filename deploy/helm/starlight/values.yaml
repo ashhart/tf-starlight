@@ -1,5 +1,5 @@
 image:
-  repository: tensorfold/starlight
+  repository: ghcr.io/ashhart/tf-starlight
   tag: ""
   pullPolicy: IfNotPresent
 imagePullSecrets: []

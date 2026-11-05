@@ -103,7 +103,8 @@ in the `render` group (`SupplementaryGroups=render` in a drop-in); the agent fin
 ### Container
 
 [`deploy/node/container/Dockerfile`](../deploy/node/container/Dockerfile) builds the agent and installs the TensorFold
-release that [`engine.json`](../engine.json) pins, checked against its SHA-256. The NVIDIA Container Toolkit supplies
+release that [`engine.json`](../engine.json) pins, checked against its SHA-256. Each Starlight release will publish the
+result as `ghcr.io/ashhart/tf-starlight-node:VERSION`, for amd64 and arm64. The NVIDIA Container Toolkit supplies
 `libcuda.so.1` from the host driver; the archive embeds its CUDA kernels. Vision towers additionally need CUDA 13
 cuBLASLt, so pass a CUDA 13 runtime image as `BASE` for those deployments.
 

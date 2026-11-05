@@ -3,12 +3,18 @@
 
 ARG BASE=ubuntu:24.04
 
-FROM golang:1.27.3-bookworm AS agent
+FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm AS agent
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/starlight-node ./cmd/starlight-node
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ARG VERSION=0.0.0-dev
+ARG COMMIT=
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath \
+    -ldflags "-s -w -X github.com/ashhart/tf-starlight/internal/buildinfo.Version=${VERSION} -X github.com/ashhart/tf-starlight/internal/buildinfo.Commit=${COMMIT}" \
+    -o /out/starlight-node ./cmd/starlight-node
 
 FROM ${BASE} AS engine
 ARG TARGETARCH
@@ -19,6 +25,10 @@ RUN case "$TARGETARCH" in amd64) platform=linux-x86_64 ;; arm64) platform=linux-
     /src/scripts/fetch-engine.sh "$platform" /opt/tensorfold
 
 FROM ${BASE}
+LABEL org.opencontainers.image.title="TensorFold Starlight Node" \
+      org.opencontainers.image.description="Runs TensorFold engines under the direction of TensorFold Starlight" \
+      org.opencontainers.image.source="https://github.com/ashhart/tf-starlight" \
+      org.opencontainers.image.licenses="Apache-2.0"
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --home-dir /var/lib/starlight-node --shell /usr/sbin/nologin starlight-node \
     && mkdir -p /var/lib/starlight-node/home && chown -R starlight-node:starlight-node /var/lib/starlight-node && chmod 0700 /var/lib/starlight-node

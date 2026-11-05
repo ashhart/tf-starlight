@@ -81,6 +81,19 @@ stopping short of loading a model.
 | `promtool check rules deploy/prometheus/rules/starlight.yaml` | 3.15.1 | 14 rules |
 | `promtool check config` on `prometheus.yml`, and on the token example with `--syntax-only` | 3.15.1 | Valid |
 
+### Releases
+
+[`release.yml`](../.github/workflows/release.yml) makes a release from a `v*` tag, and does nothing without one but a dry
+run: a manual run, or a pull request that changes how releases are made. A dry run builds all three binaries for five
+platforms, runs each on its own operating system and architecture, builds both images for amd64 and arm64 and starts each
+on each architecture, with arm64 under emulation, packages the chart and pushes it to a registry on the runner, and writes
+the checksums. It signs and publishes nothing. So the login to GHCR, the attestations and creating the release first run
+with the first tag.
+
+| Date | Run | Result |
+| --- | --- | --- |
+| 5 November 2026 | Dry run of `0.0.0-dryrun` on a branch, with TensorFold 1.2.1 in the node image | Every job passed: 15 archives, the deployment files, the chart and `SHA256SUMS`; every binary printed its version on Linux, macOS and Windows; both images started on both architectures; no release and no package appeared |
+
 ### The Compose quick start
 
 CI's `quickstart` job runs [`scripts/check-quickstart.sh`](../scripts/check-quickstart.sh) on every change. It takes the

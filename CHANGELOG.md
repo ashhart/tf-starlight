@@ -14,6 +14,10 @@
   SAML connection should update.
 - `starlight-node enroll` works as Starlight prints it. With no `--advertise` it sent an empty address, which Starlight
   refused, so every enrolment needed the flag. It now reports the host name and port 7443 until `run` reports its own.
+- A release workflow builds every binary, image and chart from a `v*` tag, with checksums and build provenance, and a manual
+  run does all of it and publishes nothing. No release has been published yet. Images and the chart will live under
+  `ghcr.io/ashhart`, so Compose's local image and the chart's default image now use that name. The node image is built for
+  arm64 too, cross-compiles its agent, and carries its version.
 - CI runs the README's Compose quick start as written and checks what it starts, including a node that enrols with the
   printed command.
 - CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds.

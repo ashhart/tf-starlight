@@ -9,7 +9,9 @@ as soon as it is gated, within two weeks for anything serious.
 
 ## Supported versions
 
-Starlight has no releases yet; fixes land on `main`.
+Starlight has no releases yet, and the first is coming; until then fixes land on `main`. Once releases exist, fixes go to
+the newest one. Each release will carry checksums and build provenance, and
+[docs/install.md](docs/install.md#from-a-release) shows how to verify them.
 
 ## What is in scope
 

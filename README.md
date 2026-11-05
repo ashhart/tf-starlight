@@ -16,8 +16,10 @@ behind a load balancer.
 
 ## Quick start with Docker Compose
 
-This brings up Starlight and Postgres on one machine for a trial, and CI runs these commands as written on every change.
-Production installs are covered in [docs/install.md](docs/install.md).
+This brings up Starlight and Postgres on one machine for a trial, building the image from this checkout, and CI runs these
+commands as written on every change. Production installs are covered in [docs/install.md](docs/install.md). Starlight has
+no published release yet; the first is coming, and [installing from a release](docs/install.md#from-a-release) says what it
+will hold.
 
 ```bash
 cd deploy/compose
@@ -43,6 +45,7 @@ docker compose exec starlight starlight nodes token --pool default --auto-approv
 ```
 
 Run the printed `starlight-node enroll ...` command on the node, then `starlight-node run` (or `starlight-node service install`).
+Until a release has them, `go build ./cmd/...` makes `starlight-node` and `tensorfold-connect`, with Go 1.27.3 or newer.
 Add a model and a deployment in the console at `/console`, and point a client at Starlight:
 
 ```bash

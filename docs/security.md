@@ -1,7 +1,7 @@
 # Security model
 
 This document lists what Starlight defends at each trust boundary, the control that does it and where it lives in the code,
-and what remains for operators or for review. File paths are relative to `starlight/`.
+and what remains for operators or for review. File paths are relative to the repository's root.
 
 ## Credentials
 

@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   starlight:
-    image: ${STARLIGHT_IMAGE:-tensorfold/starlight:dev}
+    image: ${STARLIGHT_IMAGE:-ghcr.io/ashhart/tf-starlight:dev}
     build:
       context: ../..
       dockerfile: deploy/starlight/Dockerfile

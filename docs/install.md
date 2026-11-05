@@ -3,6 +3,53 @@
 Starlight needs Postgres 15 or newer, a master key, and network paths between its three listeners and the machines that use
 them. Choose Docker Compose for a single host, Helm for Kubernetes, or the systemd unit for a Linux server.
 
+## From a release
+
+**No release has been published yet; the first is coming.** Until it is, build from a checkout of this repository, which
+the sections below describe: `docker compose build` makes the image for Compose, and `go build ./cmd/...` with Go 1.27.3 or
+newer makes the binaries. The rest of this section says what each release will hold and how to use it.
+
+| What | Where | Holds |
+| --- | --- | --- |
+| Binaries | The release's assets on GitHub | `starlight`, `starlight-node` and `tensorfold-connect`, each in its own `NAME-VERSION-OS-ARCH` archive with its licences, for `linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64` and `windows-arm64`; `.tar.gz`, or `.zip` on Windows |
+| Deployment files | `tensorfold-starlight-deploy-VERSION.tar.gz` in the assets | `deploy/`, `docs/` and the licences, at that version |
+| Starlight image | `ghcr.io/ashhart/tf-starlight:VERSION` | For `linux/amd64` and `linux/arm64` |
+| Node image | `ghcr.io/ashhart/tf-starlight-node:VERSION` | The agent and the TensorFold engine that `engine.json` pins, for `linux/amd64` and `linux/arm64` |
+| Helm chart | `oci://ghcr.io/ashhart/charts/starlight`, version `VERSION` | The chart in `deploy/helm/starlight`, defaulting to that version's image |
+| Checksums | `SHA256SUMS` in the assets | Every other asset |
+| Build provenance | GitHub attestations | Each asset, image and chart, signed by the workflow that built it |
+
+With Compose, use the published image in place of building:
+
+```bash
+curl -fsSLO https://github.com/ashhart/tf-starlight/releases/download/vVERSION/tensorfold-starlight-deploy-VERSION.tar.gz
+tar -xzf tensorfold-starlight-deploy-VERSION.tar.gz
+cd tensorfold-starlight-deploy-VERSION/deploy/compose
+./bootstrap.sh
+echo STARLIGHT_IMAGE=ghcr.io/ashhart/tf-starlight:VERSION >> .env
+docker compose pull starlight
+docker compose run --rm starlight init --org "Example Corp"
+docker compose up -d
+```
+
+With Helm, install the published chart with the values [below](#kubernetes-with-helm), in place of the path in this checkout:
+
+```bash
+helm install starlight oci://ghcr.io/ashhart/charts/starlight --version VERSION --namespace starlight
+```
+
+Check what you download. `sha256sum -c SHA256SUMS --ignore-missing` checks the archives you have, and the GitHub CLI checks
+that an asset, an image or the chart was built by this repository's release workflow:
+
+```bash
+gh attestation verify starlight-VERSION-linux-amd64.tar.gz --repo ashhart/tf-starlight
+gh attestation verify oci://ghcr.io/ashhart/tf-starlight:VERSION --repo ashhart/tf-starlight
+```
+
+The macOS and Windows binaries are not yet signed with an Apple or Microsoft certificate, so their systems warn about them
+on first run. Allow them only after checking the attestation. An organisation that rolls out Connect can sign it with
+its own certificate.
+
 ## Network paths
 
 | Listener | Default | Who connects | TLS |
@@ -43,6 +90,8 @@ overrides. Unknown keys are refused, so typos fail at start-up.
 `deploy/compose/starlight.yaml` is a complete example.
 
 ## Docker Compose
+
+This builds the image from a checkout. To use a published image, see [from a release](#from-a-release).
 
 ```bash
 cd deploy/compose
@@ -89,7 +138,9 @@ kubectl --namespace starlight create secret generic starlight-secrets \
   --from-literal=metrics-token="$(openssl rand -hex 24)"
 ```
 
-Then install:
+Then install. The chart's default image is the one published for its version, and none is published yet, so until the
+first release build `deploy/starlight/Dockerfile`, push it to your own registry and add `--set image.repository=...` and
+`--set image.tag=...`.
 
 ```bash
 helm install starlight deploy/helm/starlight --namespace starlight \
@@ -111,6 +162,9 @@ listener, put a `kubernetes.io/tls` secret name in `tls.secretName`. For a priva
 set `identityCA.configMapName`.
 
 ## Linux with systemd
+
+This takes the `starlight` binary from a [release](#from-a-release), or from `go build ./cmd/starlight` in a checkout, which
+also holds the unit and example configuration.
 
 ```bash
 sudo install -m 0755 starlight /usr/local/bin/starlight
@@ -189,7 +243,8 @@ approve with `starlight nodes approve NAME` or in the console.
 
 ## Rolling out Connect
 
-Distribute `tensorfold-connect` with your MDM and set `ServerURL` by policy so people never type an address:
+Distribute `tensorfold-connect` from a [release](#from-a-release) with your MDM and set `ServerURL` by policy so people never
+type an address:
 
 - macOS: `deploy/mdm/macos/dev.tensorfold.connect.mobileconfig` (Jamf Pro or Intune custom profile); the variant with a root
   CA payload trusts a private CA.

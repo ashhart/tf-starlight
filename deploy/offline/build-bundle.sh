@@ -72,7 +72,7 @@ cp README.md THIRD_PARTY_NOTICES.md "$out/"
 
 if [ "$with_image" = 1 ]; then
   command -v docker >/dev/null || { echo "--with-image needs docker" >&2; exit 1; }
-  image="tensorfold/starlight:$version"
+  image="ghcr.io/ashhart/tf-starlight:$version"
   docker build -f deploy/starlight/Dockerfile --build-arg VERSION="$version" --build-arg COMMIT="$commit" -t "$image" .
   docker save "$image" | gzip -9 > "$out/starlight-image-$version.tar.gz"
 fi

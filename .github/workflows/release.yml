@@ -1,0 +1,342 @@
+name: Release
+
+# A v* tag publishes a release. A manual run, or a pull request that changes how releases are made, builds everything and publishes nothing.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/build-release.sh
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp into the dry run's binaries and images
+        required: true
+        default: 0.0.0-dryrun
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+env:
+  GOFLAGS: -mod=readonly
+  GOTOOLCHAIN: local
+  STARLIGHT_IMAGE: ghcr.io/ashhart/tf-starlight
+  NODE_IMAGE: ghcr.io/ashhart/tf-starlight-node
+  CHART_REPOSITORY: ghcr.io/ashhart/charts
+
+jobs:
+  plan:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+      latest: ${{ steps.plan.outputs.latest }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: decide the version and whether this run publishes
+        id: plan
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          publish=false
+          version="${INPUT_VERSION:-0.0.0-dryrun}"
+          if [ "$EVENT" = push ] && [ "$GITHUB_REF_TYPE" = tag ]; then
+            publish=true
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::$version is not a version like 1.2.3 or 1.2.3-rc.1"
+            exit 1
+          fi
+          latest=false
+          case "$publish-$version" in true-*-*) ;; true-*) latest=true ;; esac
+          { echo "version=$version"; echo "publish=$publish"; echo "latest=$latest"; } >> "$GITHUB_OUTPUT"
+          echo "Version $version, publish $publish, latest $latest"
+      - name: a tag must be on main, past its CI, with its changelog written
+        if: steps.plan.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)"
+          case "$status" in identical|behind) ;; *) echo "::error::$GITHUB_SHA is not on main ($status)"; exit 1 ;; esac
+          passed="$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)"
+          if [ "$passed" = 0 ]; then echo "::error::CI has not passed on $GITHUB_SHA"; exit 1; fi
+          grep -q "^## $VERSION\$" CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## $VERSION' section"; exit 1; }
+
+  binaries:
+    needs: plan
+    timeout-minutes: 20
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-latest }
+          - { os: linux, arch: arm64, runner: ubuntu-latest }
+          - { os: darwin, arch: arm64, runner: macos-latest }
+          - { os: windows, arch: amd64, runner: ubuntu-latest }
+          - { os: windows, arch: arm64, runner: ubuntu-latest }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.27.x"
+          cache-dependency-path: go.sum
+      - name: build and pack
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: scripts/build-release.sh "$VERSION" "${{ matrix.os }}" "${{ matrix.arch }}" dist
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binaries-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke:
+    needs: [plan, binaries]
+    timeout-minutes: 10
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux-amd64, runner: ubuntu-latest }
+          - { platform: linux-arm64, runner: ubuntu-24.04-arm }
+          - { platform: darwin-arm64, runner: macos-latest }
+          - { platform: windows-amd64, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: binaries-${{ matrix.platform }}
+      - name: every binary starts and knows its version
+        shell: bash
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          for cmd in starlight starlight-node tensorfold-connect; do
+            name="$cmd-$VERSION-$PLATFORM"
+            case "$PLATFORM" in
+              windows-*) powershell -NoProfile -Command "Expand-Archive -Path '$name.zip' -DestinationPath ." ; bin="$name/$cmd.exe" ;;
+              *) tar -xzf "$name.tar.gz"; bin="$name/$cmd" ;;
+            esac
+            printed="$("./$bin" version)"
+            echo "$printed"
+            case "$printed" in "$cmd $VERSION "*) ;; *) echo "::error::$bin printed $printed"; exit 1 ;; esac
+          done
+
+  images:
+    needs: [plan, smoke]
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      starlight: ${{ steps.starlight.outputs.digest }}
+      node: ${{ steps.node.outputs.digest }}
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      PUBLISH: ${{ needs.plan.outputs.publish }}
+      LATEST: ${{ needs.plan.outputs.latest }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: the Starlight image, for both architectures
+        id: starlight
+        run: |
+          tags=(--tag "$STARLIGHT_IMAGE:$VERSION")
+          if [ "$LATEST" = true ]; then tags+=(--tag "$STARLIGHT_IMAGE:latest"); fi
+          docker buildx build --platform linux/amd64,linux/arm64 -f deploy/starlight/Dockerfile "${tags[@]}" --metadata-file starlight.json \
+            --build-arg VERSION="$VERSION" --build-arg COMMIT="${GITHUB_SHA::12}" --output "type=image,push=$PUBLISH" .
+          echo "digest=$(jq -r '."containerimage.digest"' starlight.json)" >> "$GITHUB_OUTPUT"
+      - name: the node image with the pinned engine, for both architectures
+        id: node
+        run: |
+          tags=(--tag "$NODE_IMAGE:$VERSION")
+          if [ "$LATEST" = true ]; then tags+=(--tag "$NODE_IMAGE:latest"); fi
+          docker buildx build --platform linux/amd64,linux/arm64 -f deploy/node/container/Dockerfile "${tags[@]}" --metadata-file node.json \
+            --build-arg VERSION="$VERSION" --build-arg COMMIT="${GITHUB_SHA::12}" --output "type=image,push=$PUBLISH" .
+          echo "digest=$(jq -r '."containerimage.digest"' node.json)" >> "$GITHUB_OUTPUT"
+      - name: each image starts, on each architecture
+        run: |
+          engine="$(jq -r .version engine.json)"
+          for platform in linux/amd64 linux/arm64; do
+            docker buildx build --platform "$platform" --load -f deploy/starlight/Dockerfile --tag smoke-starlight \
+              --build-arg VERSION="$VERSION" --build-arg COMMIT="${GITHUB_SHA::12}" .
+            docker run --rm --platform "$platform" smoke-starlight version | grep -F "starlight $VERSION "
+            docker buildx build --platform "$platform" --load -f deploy/node/container/Dockerfile --tag smoke-node \
+              --build-arg VERSION="$VERSION" --build-arg COMMIT="${GITHUB_SHA::12}" .
+            docker run --rm --platform "$platform" smoke-node version | grep -F "starlight-node $VERSION "
+            docker run --rm --platform "$platform" --entrypoint /opt/tensorfold/bin/tensorfold-native smoke-node --version | grep -F " $engine"
+          done
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          subject-name: ${{ env.STARLIGHT_IMAGE }}
+          subject-digest: ${{ steps.starlight.outputs.digest }}
+          push-to-registry: true
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          subject-name: ${{ env.NODE_IMAGE }}
+          subject-digest: ${{ steps.node.outputs.digest }}
+          push-to-registry: true
+
+  chart:
+    needs: [plan, images]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: package the chart and render what it would install
+        run: |
+          helm package deploy/helm/starlight --version "$VERSION" --app-version "$VERSION" --destination dist
+          helm lint "dist/starlight-$VERSION.tgz"
+          helm template starlight "dist/starlight-$VERSION.tgz" | grep -F "image: $STARLIGHT_IMAGE:$VERSION"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: chart
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: a dry run pushes the chart to a registry on this runner instead
+        if: needs.plan.outputs.publish != 'true'
+        shell: bash
+        run: |
+          docker run -d -p 5000:5000 registry:2
+          for _ in $(seq 1 30); do curl -fsS http://localhost:5000/v2/ > /dev/null && break; sleep 1; done
+          helm push "dist/starlight-$VERSION.tgz" oci://localhost:5000/charts --plain-http 2>&1 | tee push.log
+          grep -Eq '^Digest: sha256:[0-9a-f]{64}$' push.log
+          helm show chart oci://localhost:5000/charts/starlight --version "$VERSION" --plain-http
+      - name: push the chart
+        id: push
+        if: needs.plan.outputs.publish == 'true'
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          helm push "dist/starlight-$VERSION.tgz" "oci://$CHART_REPOSITORY" 2>&1 | tee push.log
+          echo "digest=$(sed -n 's/^Digest: //p' push.log)" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          subject-name: ${{ env.CHART_REPOSITORY }}/starlight
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+  release:
+    needs: [plan, images, chart]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      STARLIGHT_DIGEST: ${{ needs.images.outputs.starlight }}
+      NODE_DIGEST: ${{ needs.images.outputs.node }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: pack the deployment files and docs
+        run: |
+          git archive --format=tar.gz --prefix="tensorfold-starlight-deploy-$VERSION/" --output="dist/tensorfold-starlight-deploy-$VERSION.tar.gz" HEAD \
+            deploy docs engine.json scripts README.md CHANGELOG.md SECURITY.md LICENSE NOTICE THIRD_PARTY_NOTICES.md
+      - name: checksums, and everything a release must hold
+        run: |
+          cd dist
+          for os_arch in linux-amd64 linux-arm64 darwin-arm64 windows-amd64 windows-arm64; do
+            ext=tar.gz
+            case "$os_arch" in windows-*) ext=zip ;; esac
+            for cmd in starlight starlight-node tensorfold-connect; do
+              test -s "$cmd-$VERSION-$os_arch.$ext"
+            done
+          done
+          test -s "starlight-$VERSION.tgz"
+          test -s "tensorfold-starlight-deploy-$VERSION.tar.gz"
+          sha256sum -- * > SHA256SUMS
+          sha256sum -c SHA256SUMS
+          ls -l
+      - name: write the release notes
+        run: |
+          awk -v want="## $VERSION" '$0 == want { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md > notes.md
+          {
+            echo
+            echo "## Images and chart"
+            echo
+            echo "- \`$STARLIGHT_IMAGE:$VERSION\` (\`$STARLIGHT_DIGEST\`)"
+            echo "- \`$NODE_IMAGE:$VERSION\` (\`$NODE_DIGEST\`)"
+            echo "- \`oci://$CHART_REPOSITORY/starlight\`, version \`$VERSION\`"
+            echo
+            echo "See [installing from a release](https://github.com/$GITHUB_REPOSITORY/blob/v$VERSION/docs/install.md#from-a-release) to install and verify them."
+          } >> notes.md
+          cat notes.md
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          subject-path: dist/*
+      - name: publish the release
+        if: needs.plan.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=()
+          case "$VERSION" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "TensorFold Starlight $VERSION" --notes-file notes.md "${prerelease[@]}"
+      - name: a dry run stops here, having published nothing
+        if: needs.plan.outputs.publish != 'true'
+        run: |
+          {
+            echo "### Dry run of $VERSION: nothing was published"
+            echo
+            echo '```'
+            (cd dist && sha256sum -- *)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
