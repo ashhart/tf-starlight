@@ -8,3 +8,8 @@
   contract against it on Linux and macOS, and against TensorFold's newest release every day. The node container image
   installs the pinned release instead of taking a version and SHA-256 at build time.
 - `.gitignore` keeps the Compose quick start's generated `secrets/` and `.env` out of commits.
+- Security: `github.com/russellhaering/goxmldsig` moves from 1.4.0 to 1.6.1, with `etree` 1.7.0 and `clockwork` 0.5.0, to fix
+  GO-2026-4753 (CVE-2026-33487): an XML signature listing more than one reference was checked against the wrong one, so a
+  SAML response could be accepted without a valid signature over its contents. Anyone running an earlier commit with a
+  SAML connection should update.
+- CI runs `govulncheck` on every pull request, on `main` and daily, for each platform it builds.

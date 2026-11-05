@@ -80,6 +80,15 @@ stopping short of loading a model.
 | `promtool check rules deploy/prometheus/rules/starlight.yaml` | 3.15.1 | 14 rules |
 | `promtool check config` on `prometheus.yml`, and on the token example with `--syntax-only` | 3.15.1 | Valid |
 
+### Security scans
+
+`govulncheck` runs on every pull request, on `main` and every day, for each platform CI builds
+([`govulncheck.yml`](../.github/workflows/govulncheck.yml)). It fails when Starlight's code can reach a known vulnerability.
+
+| Date | Tool | Result |
+| --- | --- | --- |
+| 5 November 2026 | `govulncheck` 1.9.0, Go 1.27.3 | The first run found one vulnerability the code reaches: GO-2026-4753 (CVE-2026-33487) in `goxmldsig` 1.4.0, on the SAML signature check. Fixed by moving to 1.6.1; a second run on all five platforms finds none reachable. It also notes GO-2026-5932, `golang.org/x/crypto/openpgp`, a package Starlight does not import; no tagged `x/crypto` release has dropped it yet |
+
 ### Packages
 
 | Area | Suite | Covers |
