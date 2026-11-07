@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- [`engine.json`](engine.json) pins TensorFold 1.2.4 (from 1.2.3), with its three archives' SHA-256 digests. CI checks the engine
+  contract against it on Linux and macOS, as before.
+
 ## 0.1.0-rc.2
 
 The second pre-release, and the first with a GitHub release: it holds everything listed under 0.1.0-rc.1. Like that one,
