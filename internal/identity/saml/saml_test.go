@@ -2,6 +2,7 @@ package saml_test
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
@@ -269,6 +270,133 @@ func TestResponseShapeCheckedBeforeSignatures(t *testing.T) {
 		encrypted + `</samlp:Response>`
 	if _, err := f.sp.Parse(base64.StdEncoding.EncodeToString([]byte(response)), nil); !errors.Is(err, samlsp.ErrInvalid) || !strings.Contains(err.Error(), "misplaced") {
 		t.Fatalf("nested signatures inside an encrypted assertion: %v", err)
+	}
+}
+
+// forged is a response whose assertion edit changed and the IdP signed again, as a careless or compromised IdP could.
+func (f fixture) forged(t *testing.T, encrypt bool, edit func(assertion *etree.Element)) (string, string) {
+	t.Helper()
+	f.plain(t)
+	resp, reqID := f.respond(t)
+	raw, _ := base64.StdEncoding.DecodeString(resp)
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(raw); err != nil {
+		t.Fatal(err)
+	}
+	root := doc.Root()
+	root.RemoveChild(root.SelectElement("Signature"))
+	old := root.SelectElement("Assertion")
+	a := old.Copy()
+	a.RemoveChild(a.SelectElement("Signature"))
+	edit(a)
+	ctx := dsig.NewDefaultSigningContext(dsig.TLSCertKeyStore(tls.Certificate{Certificate: [][]byte{f.idp.IDP.Certificate.Raw},
+		PrivateKey: f.idp.IDP.Key}))
+	ctx.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
+	if err := ctx.SetSignatureMethod(dsig.RSASHA256SignatureMethod); err != nil {
+		t.Fatal(err)
+	}
+	signed, err := ctx.SignEnveloped(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encrypt {
+		plain := etree.NewDocument()
+		plain.SetRoot(signed)
+		text, err := plain.WriteToString()
+		if err != nil {
+			t.Fatal(err)
+		}
+		enc := etree.NewDocument()
+		if err := enc.ReadFromString(encryptTo(t, f, text)); err != nil {
+			t.Fatal(err)
+		}
+		signed = enc.Root()
+	}
+	root.InsertChildAt(old.Index(), signed)
+	root.RemoveChild(old)
+	out, err := doc.WriteToBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return base64.StdEncoding.EncodeToString(out), reqID
+}
+
+// putForeignNameID puts a NameID from another namespace, with text, in el's SAML NameID's place or as its last child.
+func putForeignNameID(el *etree.Element, text string) {
+	n := etree.NewElement("x:NameID")
+	n.CreateAttr("xmlns:x", "urn:example:not-saml")
+	n.SetText(text)
+	if old := el.SelectElement("NameID"); old != nil {
+		n.CreateAttr("Format", old.SelectAttrValue("Format", ""))
+		el.InsertChildAt(old.Index(), n)
+		el.RemoveChild(old)
+		return
+	}
+	el.AddChild(n)
+}
+
+// GO-2026-6909: crewjam reads a NameID from any namespace, so a signed foreign one could sign in as someone else.
+func TestForeignNameIDRefused(t *testing.T) {
+	attribute := func(a *etree.Element, name string) *etree.Element {
+		for _, el := range a.FindElements(".//Attribute") {
+			if el.SelectAttrValue("Name", "") == name {
+				return el.SelectElement("AttributeValue")
+			}
+		}
+		t.Fatalf("assertion has no %s attribute", name)
+		return nil
+	}
+	for _, encrypt := range []bool{false, true} {
+		for name, edit := range map[string]func(*etree.Element){
+			"SAML's NameID changed": func(a *etree.Element) { a.SelectElement("Subject").SelectElement("NameID").SetText("persistent-eve") },
+			"SAML's NameID changed, unprefixed as Entra ID writes it": func(a *etree.Element) {
+				a.SelectElement("Subject").SelectElement("NameID").SetText("persistent-eve")
+				for todo := []*etree.Element{a}; len(todo) > 0; {
+					e := todo[len(todo)-1]
+					todo = append(todo[:len(todo)-1], e.ChildElements()...)
+					if e.Space == "saml" {
+						e.Space = ""
+					}
+				}
+				a.RemoveAttr("xmlns:saml")
+				a.CreateAttr("xmlns", "urn:oasis:names:tc:SAML:2.0:assertion")
+			},
+		} {
+			f := newFixture(t, false)
+			resp, reqID := f.forged(t, encrypt, edit)
+			if got, err := f.sp.Parse(resp, []string{reqID}); err != nil || got.NameID != "persistent-eve" {
+				t.Fatalf("re-signed assertion with %s, encrypted %v: %+v %v", name, encrypt, got, err)
+			}
+		}
+		for name, edit := range map[string]func(*etree.Element){
+			"as the subject":  func(a *etree.Element) { putForeignNameID(a.SelectElement("Subject"), "persistent-eve") },
+			"in an attribute": func(a *etree.Element) { putForeignNameID(attribute(a, "email"), "eve@example.com") },
+			"in default namespace": func(a *etree.Element) {
+				s := a.SelectElement("Subject")
+				putForeignNameID(s, "persistent-eve")
+				n := s.SelectElement("NameID")
+				n.Space = ""
+				n.RemoveAttr("xmlns:x")
+				n.CreateAttr("xmlns", "urn:example:not-saml")
+			},
+		} {
+			f := newFixture(t, false)
+			resp, reqID := f.forged(t, encrypt, edit)
+			if _, err := f.sp.Parse(resp, []string{reqID}); !errors.Is(err, samlsp.ErrInvalid) || !strings.Contains(err.Error(), "NameID outside") {
+				t.Errorf("foreign NameID %s, encrypted %v: %v", name, encrypt, err)
+			}
+		}
+	}
+}
+
+// crewjam dereferences an assertion's Subject after its signature checks out, so one without panics inside Parse.
+func TestSignedAssertionWithoutSubjectRefused(t *testing.T) {
+	for _, encrypt := range []bool{false, true} {
+		f := newFixture(t, false)
+		resp, reqID := f.forged(t, encrypt, func(a *etree.Element) { a.RemoveChild(a.SelectElement("Subject")) })
+		if _, err := f.sp.Parse(resp, []string{reqID}); !errors.Is(err, samlsp.ErrInvalid) {
+			t.Fatalf("assertion without a subject, encrypted %v: %v", encrypt, err)
+		}
 	}
 }
 

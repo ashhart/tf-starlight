@@ -1,0 +1,3 @@
+# Advisories govulncheck may find called without failing CI: the ID first, then why Starlight is safe from it.
+# Remove a line once the module ships a fix and Starlight takes it; CI warns when an accepted ID is no longer called.
+GO-2026-6909 crewjam/saml 0.5.1 has no fixed release. internal/identity/saml refuses an assertion holding a NameID outside SAML's namespace before crewjam reads it, encrypted or not, and turns crewjam's nil-pointer panics into rejected responses (TestForeignNameIDRefused, TestSignedAssertionWithoutSubjectRefused).

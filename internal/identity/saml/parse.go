@@ -9,15 +9,23 @@ import (
 
 	"github.com/beevik/etree"
 	crewsaml "github.com/crewjam/saml"
+	"github.com/crewjam/saml/xmlenc"
 )
 
 // maxResponse bounds a decoded SAMLResponse.
 const maxResponse = 1 << 20
 
-const bearerMethod = "urn:oasis:names:tc:SAML:2.0:cm:bearer"
+const (
+	bearerMethod = "urn:oasis:names:tc:SAML:2.0:cm:bearer"
+	assertionNS  = "urn:oasis:names:tc:SAML:2.0:assertion"
+	xmlencNS     = "http://www.w3.org/2001/04/xmlenc#"
+)
 
 // ErrInvalid wraps every response rejection; the detail is for logs, not users.
 var ErrInvalid = errors.New("saml: response rejected")
+
+// errForeignNameID refuses a NameID crewjam would read as the subject from any namespace (GO-2026-6909).
+var errForeignNameID = errors.New("assertion holds a NameID outside the SAML assertion namespace")
 
 // Assertion is the verified content Starlight uses from a SAML response; the NameID parts are kept for single logout.
 type Assertion struct {
@@ -58,6 +66,9 @@ func (s *SP) Parse(samlResponse string, possibleIDs []string) (a *Assertion, err
 	if n := len(root.SelectElements("Assertion")) + len(root.SelectElements("EncryptedAssertion")); n > 1 {
 		return nil, fmt.Errorf("%w: response carries %d assertions, not one", ErrInvalid, n)
 	}
+	if err := s.nameIDs(root); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
 	parsed, err := s.sp.ParseXMLResponse(raw, possibleIDs, s.sp.AcsURL)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrInvalid, detail(err))
@@ -66,6 +77,73 @@ func (s *SP) Parse(samlResponse string, possibleIDs []string) (a *Assertion, err
 		return nil, fmt.Errorf("%w: assertion does not answer this sign-in", ErrInvalid)
 	}
 	return extract(parsed)
+}
+
+// nameIDs refuses a foreign NameID in the assertion crewjam reads; shapeVerifier misses one under a response signature.
+func (s *SP) nameIDs(root *etree.Element) error {
+	for _, el := range root.SelectElements("Assertion") {
+		if foreignNameID(el) {
+			return errForeignNameID
+		}
+	}
+	for _, enc := range root.SelectElements("EncryptedAssertion") {
+		el, err := s.decrypt(enc)
+		if err != nil {
+			return err
+		}
+		if _, err := signatures(el); err != nil {
+			return err
+		}
+		if foreignNameID(el) {
+			return errForeignNameID
+		}
+	}
+	return nil
+}
+
+// decrypt opens an EncryptedAssertion as crewjam's decryptElement does, so both read the same plaintext.
+func (s *SP) decrypt(enc *etree.Element) (*etree.Element, error) {
+	var data *etree.Element
+	for _, c := range enc.SelectElements("EncryptedData") {
+		if c.NamespaceURI() == xmlencNS {
+			if data != nil {
+				return nil, errors.New("encrypted assertion holds more than one EncryptedData")
+			}
+			data = c
+		}
+	}
+	if data == nil {
+		return nil, errors.New("encrypted assertion holds no EncryptedData")
+	}
+	var key any = s.sp.Key
+	if keyEl := enc.FindElement("./EncryptedKey"); keyEl != nil {
+		k, err := xmlenc.Decrypt(s.sp.Key, keyEl)
+		if err != nil {
+			return nil, fmt.Errorf("cannot decrypt the assertion's key: %v", err)
+		}
+		key = k
+	}
+	plain, err := xmlenc.Decrypt(key, data)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decrypt the assertion: %v", err)
+	}
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(plain); err != nil || doc.Root() == nil {
+		return nil, errors.New("decrypted assertion is not XML")
+	}
+	return doc.Root(), nil
+}
+
+// foreignNameID reports whether el or any element under it is a NameID outside SAML's assertion namespace.
+func foreignNameID(el *etree.Element) bool {
+	for todo := []*etree.Element{el}; len(todo) > 0; {
+		e := todo[len(todo)-1]
+		todo = append(todo[:len(todo)-1], e.ChildElements()...)
+		if e.Tag == "NameID" && e.NamespaceURI() != assertionNS {
+			return true
+		}
+	}
+	return false
 }
 
 // answers re-checks InResponseTo, which crewjam skips whenever IdP-initiated sign-in is enabled.

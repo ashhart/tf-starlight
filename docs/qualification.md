@@ -183,7 +183,8 @@ runs no model.
 ### Security scans
 
 `govulncheck` runs on every pull request, on `main` and every day, for each platform CI builds
-([`govulncheck.yml`](../.github/workflows/govulncheck.yml)). It fails when Starlight's code can reach a known vulnerability.
+([`govulncheck.yml`](../.github/workflows/govulncheck.yml)). It fails when Starlight's code can reach a known vulnerability,
+unless [`govulncheck-accepted.txt`](../.github/govulncheck-accepted.txt) names that advisory with the reason Starlight is safe from it.
 CodeQL's extended security queries for Go run on every pull request, on `main` and every week
 ([`codeql.yml`](../.github/workflows/codeql.yml)), over the Linux build, and report to the repository's Security tab.
 [Dependabot](../.github/dependabot.yml) proposes weekly updates to Go modules, Actions and container images.
@@ -191,6 +192,7 @@ CodeQL's extended security queries for Go run on every pull request, on `main` a
 | Date | Tool | Result |
 | --- | --- | --- |
 | 5 November 2026 | `govulncheck` 1.9.0, Go 1.27.3 | The first run found one vulnerability the code reaches: GO-2026-4753 (CVE-2026-33487) in `goxmldsig` 1.4.0, on the SAML signature check. Fixed by moving to 1.6.1; a second run on all five platforms finds none reachable. It also notes GO-2026-5932, `golang.org/x/crypto/openpgp`, a package Starlight does not import; no tagged `x/crypto` release has dropped it yet |
+| 8 November 2026 | `govulncheck` 1.9.0, Go 1.27.3 | The daily run from 6 November found GO-2026-6909 in `crewjam/saml` 0.5.1, which has no fixed release. crewjam reads a `NameID` from any XML namespace as the subject or an attribute value, so an IdP-signed assertion carrying a foreign one could sign in as someone else, and it dereferences an assertion's `Subject` without a check. Starlight now refuses an assertion holding a `NameID` outside SAML's namespace before crewjam reads it, encrypted or not, and its parser already turned crewjam's panics into rejected responses (`TestForeignNameIDRefused`, `TestSignedAssertionWithoutSubjectRefused`). The advisory is accepted with that reason, and any other one the code calls still fails the scan |
 
 CodeQL's first full run on `main`, on 5 November 2026 with CodeQL 2.27.4 and Go 1.27.3, raised 14 alerts. Two led to fixes. The
 others were dismissed on the Security tab, each with its reason:

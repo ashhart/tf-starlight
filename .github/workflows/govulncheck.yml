@@ -34,15 +34,36 @@ jobs:
           cache-dependency-path: go.sum
       - name: install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      # An advisory the code calls fails the scan unless .github/govulncheck-accepted.txt names it with a reason.
       - name: scan the platforms ci.yml builds
         run: |
+          govulncheck="$(go env GOPATH)/bin/govulncheck"
+          accepted=$(grep -o '^GO-[0-9]*-[0-9]*' .github/govulncheck-accepted.txt | sort -u)
           status=0
+          called=""
           for target in linux/amd64 linux/arm64 darwin/arm64 windows/amd64 windows/arm64; do
             os="${target%/*}"; arch="${target#*/}"
             tags=""
             if [ "$os" = darwin ]; then tags=notray; fi
             echo "::group::$target"
-            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 "$(go env GOPATH)/bin/govulncheck" -tags "$tags" ./... || status=1
+            out="$RUNNER_TEMP/govulncheck-$os-$arch.json"
+            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 "$govulncheck" -tags "$tags" -format json ./... > "$out" || status=1
+            "$govulncheck" -mode convert < "$out" || true
+            for id in $(jq -r 'select(.finding.trace[0].function != null) | .finding.osv' "$out" | sort -u); do
+              called="$called $id"
+              if printf '%s\n' "$accepted" | grep -qx "$id"; then
+                echo "::warning::$target calls $id, accepted in .github/govulncheck-accepted.txt"
+              else
+                echo "::error::$target calls $id"
+                status=1
+              fi
+            done
             echo "::endgroup::"
+          done
+          for id in $accepted; do
+            case " $called " in
+              *" $id "*) ;;
+              *) echo "::warning::$id is accepted but no platform calls it now: remove it from .github/govulncheck-accepted.txt" ;;
+            esac
           done
           exit "$status"
