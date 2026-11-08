@@ -1,9 +1,9 @@
 {
   "repository": "ashhart/TensorFold",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "archives": {
-    "linux-aarch64": "1f3f73385dd7dd76ea7707b9c1faeb9ab2afe78424e9eec377f7c7d58e0e5e18",
-    "linux-x86_64": "4d927f99540fa45388d1abad6ebf58e0fc7a6027b3ab91185018879f4bec48af",
-    "macos-arm64": "8e68c3a88a920a6c34ed7f4d6952d8a43b99245eeaf5f4a6bbad3b36108d72d0"
+    "linux-aarch64": "1a0192b28d6ab6ec2749f3ff25515379dba4895171e781b30f810afc971ae4f8",
+    "linux-x86_64": "09da791e0eacca392c3398a280b13d4340575a8aa5cd973435baec6a4556f93b",
+    "macos-arm64": "563147f13ffa3fe46a5e596b5516196aa95c77f4cdeec784e3dc8312da4e85e7"
   }
 }
