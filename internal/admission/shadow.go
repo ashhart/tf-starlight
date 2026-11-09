@@ -18,15 +18,22 @@ type shadowWork struct {
 const shadowFilter = ` AND ($5='' OR r.id::text=$5) AND NOT (r.id::text=ANY($6::text[]))
 	AND (cardinality($7::text[])=0 OR (d.id::text||':'||d.revision::text)=ANY($7::text[]))`
 
-func shadowColumns() string {
+const shadowProjection = `jsonb_build_object('generation',r.live->'generation','observed_at',r.live->'observed_at',
+	'window_seconds',r.live->'window_seconds','prompt_tokens_per_second',r.live->'prompt_tokens_per_second',
+	'tokens_per_second',r.live->'tokens_per_second','running',r.live->'running','waiting',r.live->'waiting')`
+
+func shadowCandidateQuery(base string) string {
 	limit := strconv.Itoa(routing.MaxShadowCandidates)
-	return `,CASE WHEN count(*) OVER()<=` + limit + ` AND octet_length(r.live::text)<=4096 THEN
-		jsonb_build_object('generation',r.live->'generation','observed_at',r.live->'observed_at',
-		'window_seconds',r.live->'window_seconds','prompt_tokens_per_second',r.live->'prompt_tokens_per_second',
-		'tokens_per_second',r.live->'tokens_per_second','running',r.live->'running','waiting',r.live->'waiting')
-		ELSE '{}'::jsonb END,r.generation,CASE WHEN count(*) OVER()<=` + limit + ` THEN
+	return `WITH shadow_candidates(replica_id,node_id,address,deployment_id,revision,served_name,slots,used,generation,candidate_count)
+		AS (` + base + `)
+		SELECT c.replica_id,c.node_id,c.address,c.deployment_id,c.revision,c.served_name,c.slots,c.used,
+		CASE WHEN c.candidate_count<=` + limit + ` THEN
+		(SELECT CASE WHEN octet_length(r.live::text)<=4096 THEN ` + shadowProjection + ` ELSE '{}'::jsonb END
+		FROM replicas r WHERE r.id=c.replica_id) ELSE '{}'::jsonb END,c.generation,
+		CASE WHEN c.candidate_count<=` + limit + ` THEN
 		(SELECT coalesce(sum(l.reserved_tokens),0)::text FROM leases l
-		WHERE l.replica_id=r.id AND l.heartbeat_at>now()-interval '` + staleSQL + `') ELSE '' END`
+		WHERE l.replica_id=c.replica_id AND l.heartbeat_at>now()-interval '` + staleSQL + `') ELSE '' END
+		FROM shadow_candidates c ORDER BY c.replica_id`
 }
 
 func shadowQueryArgs(req Request) []any {
