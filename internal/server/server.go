@@ -163,7 +163,8 @@ func (t *Starlight) build() error {
 	t.credentials = creds
 	nodes := &gateway.Nodes{TrustDomain: t.Inst.TrustDomain, Roots: t.Trust.Roots(), Cert: t.Trust.GatewayCert, Signer: t.Trust.Signer}
 	t.Gateway = &gateway.Gateway{Pool: t.Pool, Auth: t.Auth, Catalog: t.Catalog, Admitter: t.Admitter, Policies: t.Policies, Nodes: nodes,
-		Providers: &providers.Client{Egress: t.Egress, Creds: creds}, Metrics: t.Metrics, Proxies: proxies, Config: cfg.Gateway, Log: t.Log}
+		Providers: &providers.Client{Egress: t.Egress, Creds: creds}, Metrics: t.Metrics, Proxies: proxies,
+		Config: cfg.Gateway, StreamTimings: cfg.Metrics.StreamTimings, Log: t.Log}
 	t.Control = &control.Server{Pool: t.Pool, Trust: t.Trust, Proxies: proxies, Log: t.Log, RateKey: t.rateKey}
 	t.Sessions = session.New(t.Pool, session.Config{Idle: cfg.Sessions.ConsoleIdle.Duration, Absolute: cfg.Sessions.ConsoleAbsolute.Duration,
 		Secure: cfg.Secure()})

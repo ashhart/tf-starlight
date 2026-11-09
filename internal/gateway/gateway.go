@@ -29,19 +29,20 @@ import (
 
 // Gateway serves /v1 inference under authentication, policy, admission and accounting.
 type Gateway struct {
-	Pool      *pgxpool.Pool
-	Auth      *authn.Authenticator
-	Catalog   *catalog.Catalog
-	Admitter  *admission.Admitter
-	Policies  *Policies
-	Nodes     *Nodes
-	Providers *providers.Client
-	Metrics   *metrics.Set
-	Proxies   *httpx.Proxies
-	Config    config.Gateway
-	Log       *slog.Logger
-	limitsMu  sync.Mutex
-	limits    map[string]cachedLimits
+	Pool          *pgxpool.Pool
+	Auth          *authn.Authenticator
+	Catalog       *catalog.Catalog
+	Admitter      *admission.Admitter
+	Policies      *Policies
+	Nodes         *Nodes
+	Providers     *providers.Client
+	Metrics       *metrics.Set
+	StreamTimings bool
+	Proxies       *httpx.Proxies
+	Config        config.Gateway
+	Log           *slog.Logger
+	limitsMu      sync.Mutex
+	limits        map[string]cachedLimits
 }
 
 // bodyDeadline bounds how long a client may take to send its request body.

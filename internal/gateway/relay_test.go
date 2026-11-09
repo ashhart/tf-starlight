@@ -22,7 +22,7 @@ func sse(events ...string) *http.Response {
 func TestRelayOpenAIStreamHidesInjectedUsage(t *testing.T) {
 	resp := sse(`data: {"choices":[{"delta":{"content":"hi"}}]}`, `data: {"choices":[],"usage":{"prompt_tokens":7,"completion_tokens":2,"prompt_tokens_details":{"cached_tokens":3}}}`, `data: [DONE]`)
 	w := httptest.NewRecorder()
-	out := relay(context.Background(), w, resp, providers.ChatCompletions, true, httpx.OpenAI, time.Now())
+	out := relay(context.Background(), w, resp, providers.ChatCompletions, true, httpx.OpenAI, time.Now(), false)
 	if out.outcome != "ok" || out.usage.Prompt != 7 || out.usage.Completion != 2 || out.usage.Cached != 3 || !out.usage.Observed {
 		t.Fatalf("out = %+v", out)
 	}
@@ -31,7 +31,7 @@ func TestRelayOpenAIStreamHidesInjectedUsage(t *testing.T) {
 	}
 	resp = sse(`data: {"choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1}}`, `data: [DONE]`)
 	w = httptest.NewRecorder()
-	relay(context.Background(), w, resp, providers.ChatCompletions, false, httpx.OpenAI, time.Now())
+	relay(context.Background(), w, resp, providers.ChatCompletions, false, httpx.OpenAI, time.Now(), false)
 	if !strings.Contains(w.Body.String(), "usage") {
 		t.Fatal("requested usage chunk was hidden")
 	}
@@ -41,13 +41,13 @@ func TestRelayAnthropicAndResponsesStreams(t *testing.T) {
 	resp := sse("event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":10,\"cache_read_input_tokens\":90,\"output_tokens\":1}}}",
 		"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"text\":\"ok\"}}",
 		"event: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":42}}", "event: message_stop\ndata: {\"type\":\"message_stop\"}")
-	out := relay(context.Background(), httptest.NewRecorder(), resp, providers.Messages, false, httpx.Anthropic, time.Now())
+	out := relay(context.Background(), httptest.NewRecorder(), resp, providers.Messages, false, httpx.Anthropic, time.Now(), false)
 	if out.usage.Prompt != 100 || out.usage.Cached != 90 || out.usage.Completion != 42 || !out.usage.Observed {
 		t.Fatalf("anthropic usage %+v", out.usage)
 	}
 	resp = sse(`data: {"type":"response.created","response":{"id":"resp_abc"}}`, `data: {"type":"response.output_text.delta","delta":"x"}`,
 		`data: {"type":"response.completed","response":{"id":"resp_abc","usage":{"input_tokens":5,"output_tokens":6,"input_tokens_details":{"cached_tokens":1}}}}`)
-	out = relay(context.Background(), httptest.NewRecorder(), resp, providers.Responses, false, httpx.OpenAI, time.Now())
+	out = relay(context.Background(), httptest.NewRecorder(), resp, providers.Responses, false, httpx.OpenAI, time.Now(), false)
 	if out.responseID != "resp_abc" || out.usage.Prompt != 5 || out.usage.Completion != 6 || out.usage.Cached != 1 {
 		t.Fatalf("responses %+v", out)
 	}
@@ -67,7 +67,7 @@ func TestRelayInterruptedStreamIsUnobserved(t *testing.T) {
 	resp := &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/event-stream"}},
 		Body: io.NopCloser(failing{strings.NewReader("data: {\"choices\":[{\"delta\":{\"content\":\"par\"}}]}\n\n")})}
 	w := httptest.NewRecorder()
-	out := relay(context.Background(), w, resp, providers.ChatCompletions, true, httpx.OpenAI, time.Now())
+	out := relay(context.Background(), w, resp, providers.ChatCompletions, true, httpx.OpenAI, time.Now(), false)
 	if out.outcome != "interrupted" || out.usage.Observed || !strings.Contains(w.Body.String(), "stream_interrupted") {
 		t.Fatalf("out = %+v body %q", out, w.Body.String())
 	}
@@ -77,7 +77,7 @@ func TestRelayJSONErrorsPassThrough(t *testing.T) {
 	resp := &http.Response{StatusCode: 400, Header: http.Header{"Content-Type": {"application/json"}},
 		Body: io.NopCloser(strings.NewReader(`{"error":{"message":"context_length_exceeded"}}`))}
 	w := httptest.NewRecorder()
-	out := relay(context.Background(), w, resp, providers.ChatCompletions, false, httpx.OpenAI, time.Now())
+	out := relay(context.Background(), w, resp, providers.ChatCompletions, false, httpx.OpenAI, time.Now(), false)
 	if w.Code != 400 || out.outcome != "client_error" || !out.usage.Observed || out.usage.Prompt != 0 {
 		t.Fatalf("out = %+v code %d", out, w.Code)
 	}

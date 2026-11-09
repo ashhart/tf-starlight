@@ -65,7 +65,7 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, c *call, start t
 		w.Header().Set("X-Starlight-Route", route)
 		w.Header().Set("X-Starlight-Model", c.model.Name)
 		strip := c.protocol == providers.ChatCompletions && c.info.Stream && !c.info.WantsUsage
-		out := relay(ctx, w, resp, c.protocol, strip, c.dialect, start)
+		out := relay(ctx, w, resp, c.protocol, strip, c.dialect, start, g.StreamTimings)
 		resp.Body.Close()
 		stop()
 		switch cause := context.Cause(ctx); {
@@ -74,6 +74,7 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, c *call, start t
 		case errors.Is(cause, errTooLong):
 			out.outcome = "timeout"
 		}
+		g.observeStream(c.model.Name, route, out.outcome, out.times)
 		g.settle(ctx, c, lease, out.usage, out.status, out.outcome, out.firstByte, start)
 		g.remember(ctx, c, lease, out)
 		return

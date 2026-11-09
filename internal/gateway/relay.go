@@ -26,10 +26,11 @@ type relayed struct {
 	firstByte  time.Duration
 	outcome    string
 	responseID string
+	times      *streamTimes
 }
 
 // relay copies an upstream response to the client and meters usage; stripUsage hides an unrequested usage chunk.
-func relay(ctx context.Context, w http.ResponseWriter, resp *http.Response, protocol string, stripUsage bool, d httpx.Dialect, start time.Time) relayed {
+func relay(ctx context.Context, w http.ResponseWriter, resp *http.Response, protocol string, stripUsage bool, d httpx.Dialect, start time.Time, observe bool) relayed {
 	out := relayed{status: resp.StatusCode, outcome: "ok"}
 	m := &meter{protocol: protocol}
 	ct := resp.Header.Get("Content-Type")
@@ -39,7 +40,10 @@ func relay(ctx context.Context, w http.ResponseWriter, resp *http.Response, prot
 		w.Header().Set("X-Accel-Buffering", "no")
 		w.WriteHeader(resp.StatusCode)
 		out.firstByte = time.Since(start)
-		out.outcome = stream(ctx, w, resp.Body, m, stripUsage, d)
+		if observe {
+			out.times = &streamTimes{start: start}
+		}
+		out.outcome = stream(ctx, w, resp.Body, m, stripUsage, d, out.times)
 	} else {
 		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponse+1))
 		if err != nil || len(body) > maxResponse {
@@ -72,8 +76,11 @@ func outcomeFor(status int) string {
 }
 
 // stream forwards server-sent events one block at a time, flushing each to the client.
-func stream(ctx context.Context, w http.ResponseWriter, body io.Reader, m *meter, stripUsage bool, d httpx.Dialect) string {
+func stream(ctx context.Context, w http.ResponseWriter, body io.Reader, m *meter, stripUsage bool, d httpx.Dialect, times *streamTimes) string {
 	rc := http.NewResponseController(w)
+	if times != nil {
+		body = observedReader{Reader: body, times: times}
+	}
 	r := bufio.NewReaderSize(body, 64<<10)
 	var block bytes.Buffer
 	for {
@@ -84,10 +91,17 @@ func stream(ctx context.Context, w http.ResponseWriter, body io.Reader, m *meter
 		}
 		blank := len(line) > 0 && len(bytes.TrimRight(line, "\r\n")) == 0
 		if blank || err != nil && block.Len() > 0 {
+			firstOutput := blank && times.event(m.protocol, block.Bytes())
 			if !forward(w, block.Bytes(), m, stripUsage) {
 				return "cancelled"
 			}
-			_ = rc.Flush()
+			if firstOutput {
+				times.flush = seenTime{elapsed: times.elapsed(), seen: true}
+			}
+			flushErr := rc.Flush()
+			if firstOutput {
+				times.flushError = flushErr != nil
+			}
 			block.Reset()
 		}
 		if err != nil {

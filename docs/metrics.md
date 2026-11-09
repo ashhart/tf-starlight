@@ -11,7 +11,10 @@ number of models and deployments.
 | --- | --- | --- | --- |
 | `starlight_requests_total` | counter | `model`, `protocol`, `route`, `status`, `outcome` | Finished inference attempts |
 | `starlight_request_duration_seconds` | histogram | `model`, `route` | Arrival to last byte |
-| `starlight_first_byte_seconds` | histogram | `model`, `route` | Arrival to the first byte sent to the client |
+| `starlight_first_byte_seconds` | histogram | `model`, `route` | Legacy boundary: response-header stage for SSE, complete buffered body for JSON |
+| `starlight_upstream_first_data_seconds` | histogram | `model`, `route`, `outcome` | Arrival to the first positive upstream SSE body read, including comments or metadata |
+| `starlight_first_model_output_seconds` | histogram | `model`, `route`, `outcome`, `payload` | Arrival to the first recognized generated payload in a complete SSE event |
+| `starlight_first_model_output_flush_seconds` | histogram | `model`, `route`, `outcome`, `result` | Arrival to the first generated payload's flush attempt |
 | `starlight_queue_wait_seconds` | histogram | `model`, `priority` | Time queued for capacity, for requests that queued |
 | `starlight_tokens_total` | counter | `model`, `route`, `direction` | Tokens; `direction` is `prompt`, `completion` or `cached` |
 | `starlight_admission_rejections_total` | counter | `reason` | Requests refused before dispatch |
@@ -31,6 +34,37 @@ Label values:
   `rate_limit`, `budget_limit`, `capacity`, `no_route`, `client_left`, `internal`.
 
 Histogram buckets are 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 60, 120, 300 and 600 seconds.
+
+### Stream observation boundaries
+
+Set `metrics.stream_timings: true` to enable the three new stream series. The default is false, retaining the existing
+relay path without the new payload observer. Enable it for a qualification run, measure collector overhead on your
+traffic, then keep it enabled where the observation budget permits. Turning it off does not change legacy metrics.
+
+The three new stream series use the gateway's local monotonic clock from request arrival. `payload` is `text`,
+`reasoning` or `tool`; a tool name or nonempty argument fragment counts, but a tool ID, role, usage-only event,
+heartbeat, signature or lifecycle event does not. The observer recognizes OpenAI Chat/Completions text, reasoning,
+refusal and function/tool deltas; Responses text, refusal, reasoning, function/custom-tool/MCP argument deltas and
+named function/custom-tool items; and Anthropic text, thinking and tool-use blocks/deltas. Other payload types remain
+unobserved. Multi-line SSE data fields are joined for observation without changing the bytes forwarded to the client.
+
+An incomplete event at EOF cannot establish first model output. A stream with no recognized output has no model-output
+or model-flush sample; it is not recorded as zero latency. JSON responses have no new stream samples. A stream that
+produces output and then fails still has its observed samples, labeled with its final `outcome`. Those samples do not
+prove completion, metered usage, token boundaries or a token generation rate.
+
+The flush series records the start of the flush attempt after the event is written. Its `result` is `ok` or `error`.
+A write failure has no flush sample. A successful flush reports what the gateway did; network buffering and the client's
+receive time require a separate client receipt. Headers alone cannot satisfy model-output timing.
+
+The existing first-byte series and `usage_events.ttft_ms` retain their earlier boundary for compatibility. Historical
+records must not be reinterpreted as first generated token measurements. Use the model-output series for a declared
+stream-payload SLO and keep its payload type and final outcome in the receipt.
+
+The recognized event shapes are documented in the official
+[OpenAI streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events),
+[Chat streaming reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/streaming-events)
+and [Anthropic streaming reference](https://platform.claude.com/docs/en/build-with-claude/streaming).
 
 ## Fleet series (installation-wide)
 
@@ -69,6 +103,7 @@ Example queries:
 ```promql
 sum by (model) (rate(starlight_tokens_total{direction="completion"}[5m]))
 histogram_quantile(0.95, sum by (le, model) (rate(starlight_first_byte_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le, model, payload) (rate(starlight_first_model_output_seconds_bucket{outcome="ok"}[5m])))
 sum(rate(starlight_requests_total{route="cloud"}[1h])) / sum(rate(starlight_requests_total[1h]))
 max by (deployment) (starlight_replicas{state="ready"})
 ```

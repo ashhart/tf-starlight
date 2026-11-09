@@ -19,6 +19,9 @@ type Set struct {
 	Requests    *prometheus.CounterVec
 	Duration    *prometheus.HistogramVec
 	FirstByte   *prometheus.HistogramVec
+	StreamData  *prometheus.HistogramVec
+	ModelOutput *prometheus.HistogramVec
+	ModelFlush  *prometheus.HistogramVec
 	QueueWait   *prometheus.HistogramVec
 	Tokens      *prometheus.CounterVec
 	Rejections  *prometheus.CounterVec
@@ -42,8 +45,18 @@ func New() *Set {
 			[]string{"model", "protocol", "route", "status", "outcome"}),
 		Duration: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_request_duration_seconds", Help: "Admission to last byte.", Buckets: latency},
 			[]string{"model", "route"}),
-		FirstByte: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_first_byte_seconds", Help: "Arrival to first byte sent.", Buckets: latency},
+		FirstByte: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_first_byte_seconds",
+			Help: "Legacy response-header stage for SSE, or completed buffered body for JSON; not client receive time.", Buckets: latency},
 			[]string{"model", "route"}),
+		StreamData: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_upstream_first_data_seconds",
+			Help: "Arrival to the first upstream SSE body read, including comments or metadata.", Buckets: latency},
+			[]string{"model", "route", "outcome"}),
+		ModelOutput: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_first_model_output_seconds",
+			Help: "Arrival to the first recognized generated payload in a complete SSE event.", Buckets: latency},
+			[]string{"model", "route", "outcome", "payload"}),
+		ModelFlush: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_first_model_output_flush_seconds",
+			Help: "Arrival to the first generated payload's flush attempt; not client receive time.", Buckets: latency},
+			[]string{"model", "route", "outcome", "result"}),
 		QueueWait: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_queue_wait_seconds", Help: "Time spent waiting for capacity.", Buckets: latency},
 			[]string{"model", "priority"}),
 		Tokens: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "starlight_tokens_total", Help: "Tokens by direction."},
@@ -61,7 +74,8 @@ func New() *Set {
 		CertExpiry: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "starlight_certificate_expiry_timestamp_seconds",
 			Help: "When the public certificate and the workload CA expire, as Unix time."}, []string{"certificate"}),
 	}
-	r.MustRegister(s.Requests, s.Duration, s.FirstByte, s.QueueWait, s.Tokens, s.Rejections, s.InFlight, s.QueueDepth,
+	r.MustRegister(s.Requests, s.Duration, s.FirstByte, s.StreamData, s.ModelOutput, s.ModelFlush,
+		s.QueueWait, s.Tokens, s.Rejections, s.InFlight, s.QueueDepth,
 		s.Replicas, s.Nodes, s.LeaderEpoch, s.CertExpiry)
 	return s
 }
