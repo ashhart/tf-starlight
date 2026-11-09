@@ -59,10 +59,10 @@ func TestTerminalMigrationPreservesAnExistingLeaseAndLegacyVoidCall(t *testing.T
 		}
 	}
 	var events, receipts int
-	var observed bool
+	var observed *bool
 	err = pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM usage_events),count(*),bool_or(observed) FROM terminal_leases`).
 		Scan(&events, &receipts, &observed)
-	if err != nil || events != 1 || receipts != 1 || observed {
+	if err != nil || events != 1 || receipts != 1 || observed != nil {
 		t.Fatalf("legacy settlement events=%d receipts=%d observed=%v: %v", events, receipts, observed, err)
 	}
 	var state string

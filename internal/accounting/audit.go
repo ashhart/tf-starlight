@@ -17,15 +17,21 @@ import (
 	"github.com/ashhart/tf-starlight/internal/db"
 )
 
-// Drain appends at most limit pending events to the existing audit chain, terminal before late for each lease.
+// Drain attempts at most limit pending events, backing off failing leases while continuing with healthy work.
 func Drain(ctx context.Context, pool *pgxpool.Pool, limit int) (int, error) {
+	r, err := drainBatch(ctx, pool, limit)
+	return r.Appended, err
+}
+
+func drainBatch(ctx context.Context, pool *pgxpool.Pool, limit int) (DrainResult, error) {
+	var result DrainResult
 	if limit < 1 || limit > 100 {
-		return 0, errors.New("accounting audit limit must be between 1 and 100")
+		return result, errors.New("accounting audit limit must be between 1 and 100")
 	}
 	rows, err := pool.Query(ctx, `SELECT lease_id::text FROM accounting_audit WHERE audit_seq IS NULL
-		ORDER BY created_at,lease_id LIMIT $1`, limit)
+		AND next_attempt_at<=now() ORDER BY next_attempt_at,created_at,lease_id LIMIT $1`, limit)
 	if err != nil {
-		return 0, err
+		return result, err
 	}
 	var leases []string
 	seen := map[string]bool{}
@@ -33,8 +39,9 @@ func Drain(ctx context.Context, pool *pgxpool.Pool, limit int) (int, error) {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			rows.Close()
-			return 0, err
+			return result, err
 		}
+		result.Selected++
 		if !seen[id] {
 			seen[id] = true
 			leases = append(leases, id)
@@ -42,20 +49,40 @@ func Drain(ctx context.Context, pool *pgxpool.Pool, limit int) (int, error) {
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return 0, err
+		return result, err
 	}
-	total := 0
+	var first error
 	for _, id := range leases {
-		n, err := drainLease(ctx, pool, id, limit-total)
+		n, err := drainLease(ctx, pool, id, limit-result.Appended)
 		if err != nil {
-			return total, err
+			result.Failed++
+			if first == nil {
+				first = err
+			}
+			if ctx.Err() != nil {
+				break
+			}
+			if retryErr := retryLease(ctx, pool, id, ErrorClass(err)); retryErr != nil {
+				if first == nil {
+					first = retryErr
+				}
+				break
+			}
+			continue
 		}
-		total += n
-		if total == limit {
+		result.Appended += n
+		if result.Appended == limit {
 			break
 		}
 	}
-	return total, nil
+	return result, first
+}
+
+func retryLease(ctx context.Context, pool *pgxpool.Pool, id, class string) error {
+	_, err := pool.Exec(ctx, `UPDATE accounting_audit SET attempts=least(attempts::bigint+1,2147483647)::int,
+		next_attempt_at=clock_timestamp()+make_interval(secs=>least(300,30*power(2,least(attempts,4)))::double precision),
+		last_error_class=$2 WHERE lease_id=$1 AND audit_seq IS NULL`, id, class)
+	return err
 }
 
 func drainLease(ctx context.Context, pool *pgxpool.Pool, id string, limit int) (int, error) {

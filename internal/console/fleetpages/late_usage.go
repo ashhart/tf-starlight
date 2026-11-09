@@ -3,7 +3,9 @@ package fleetpages
 import (
 	"bytes"
 	"net/http"
+	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/ashhart/tf-starlight/internal/admin/fleet"
 	"github.com/ashhart/tf-starlight/internal/console"
@@ -17,7 +19,16 @@ func (p *pages) accountingCSV(q *console.Request) error {
 	if !page.Visible {
 		return forbidden()
 	}
-	rows, truncated, err := fleet.AccountingUsage(q.Ctx(), p.c.Pool, f)
+	var cursor *fleet.AccountingCursor
+	query := q.R.URL.Query()
+	if query.Get("before") != "" || query.Get("before_id") != "" {
+		at, err := time.Parse(time.RFC3339Nano, query.Get("before"))
+		if err != nil || query.Get("before_id") == "" {
+			return console.Invalid("provide both a valid before timestamp and before_id cursor")
+		}
+		cursor = &fleet.AccountingCursor{EndedAt: at, LeaseID: query.Get("before_id")}
+	}
+	rows, truncated, err := fleet.AccountingPage(q.Ctx(), p.c.Pool, f, cursor)
 	if err != nil {
 		return friendly(err)
 	}
@@ -31,6 +42,15 @@ func (p *pages) accountingCSV(q *console.Request) error {
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Starlight-Truncated", strconv.FormatBool(truncated))
+	if truncated && len(rows) > 0 {
+		last := rows[len(rows)-1]
+		next := url.Values{"from": {page.From}, "to": {page.To}, "before": {last.EndedAt.UTC().Format(time.RFC3339Nano)},
+			"before_id": {last.LeaseID}}
+		if page.Project != "" {
+			next.Set("project", page.Project)
+		}
+		h.Set("Link", "</console/accounting.csv?"+next.Encode()+">; rel=\"next\"")
+	}
 	q.W.WriteHeader(http.StatusOK)
 	_, err = q.W.Write(buf.Bytes())
 	return err

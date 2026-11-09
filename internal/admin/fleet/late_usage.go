@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ashhart/tf-starlight/internal/db"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // AccountingRow separates an original budget charge from a later observation of the same lease.
@@ -16,16 +17,35 @@ type AccountingRow struct {
 	EndedAt                           time.Time
 	ReceivedAt                        *time.Time
 	ChargedTokens, ChargedMicros      *int64
-	OriginallyObserved                bool
+	OriginallyObserved                *bool
 	Prompt, Completion, Cached        *int64
 	CostMicros                        *int64
 	TerminalAudit, LateAudit          *int64
 }
 
+// AccountingCursor continues descending terminal time and ascending lease ID within the caller's original filters.
+type AccountingCursor struct {
+	EndedAt time.Time
+	LeaseID string
+}
+
 // AccountingUsage returns at most 1,000 receipts by terminal time, with the caller's existing project scope.
 func AccountingUsage(ctx context.Context, q db.Querier, f UsageFilter) ([]AccountingRow, bool, error) {
+	return AccountingPage(ctx, q, f, nil)
+}
+
+// AccountingPage returns a bounded retained-history page without weakening the caller's project scope.
+func AccountingPage(ctx context.Context, q db.Querier, f UsageFilter, cursor *AccountingCursor) ([]AccountingRow, bool, error) {
 	if !f.To.After(f.From) || f.To.Sub(f.From) > 400*24*time.Hour {
 		return nil, false, Invalid("choose a range of at most 400 days that ends after it starts")
+	}
+	var before *time.Time
+	var beforeID *string
+	if cursor != nil {
+		if !ids.Valid(cursor.LeaseID) || cursor.EndedAt.Before(f.From) || !cursor.EndedAt.Before(f.To) {
+			return nil, false, Invalid("invalid accounting cursor for this date range")
+		}
+		before, beforeID = &cursor.EndedAt, &cursor.LeaseID
 	}
 	projects := f.Projects
 	if projects == nil {
@@ -40,7 +60,8 @@ func AccountingUsage(ctx context.Context, q db.Querier, f UsageFilter) ([]Accoun
 		LEFT JOIN accounting_audit a ON a.lease_id=t.lease_id AND a.kind='terminal'
 		LEFT JOIN accounting_audit b ON b.lease_id=t.lease_id AND b.kind='late'
 		WHERE t.ended_at >= $1 AND t.ended_at < $2 AND ($3 OR t.project_id=ANY($4::uuid[]))
-		ORDER BY t.ended_at DESC,t.lease_id LIMIT 1001`, f.From, f.To, f.Projects == nil, projects)
+		AND ($5::timestamptz IS NULL OR t.ended_at<$5 OR (t.ended_at=$5 AND t.lease_id>$6::uuid))
+		ORDER BY t.ended_at DESC,t.lease_id LIMIT 1001`, f.From, f.To, f.Projects == nil, projects, before, beforeID)
 	if err != nil {
 		return nil, false, err
 	}
@@ -87,7 +108,7 @@ func WriteAccountingCSV(w io.Writer, rows []AccountingRow) error {
 		}
 		if err := c.Write([]string{safeCell(r.LeaseID), safeCell(r.ProjectID), safeCell(r.ModelID), safeCell(r.Kind),
 			r.EndedAt.UTC().Format(time.RFC3339Nano), optionalInt(r.ChargedTokens), optionalInt(r.ChargedMicros),
-			strconv.FormatBool(r.OriginallyObserved), strconv.FormatBool(late), received,
+			optionalBool(r.OriginallyObserved), strconv.FormatBool(late), received,
 			optionalInt(r.Prompt), optionalInt(r.Completion), optionalInt(r.Cached), optionalInt(r.CostMicros), "0", "0",
 			optionalInt(r.TerminalAudit), optionalInt(r.LateAudit), state}); err != nil {
 			return err
@@ -102,4 +123,11 @@ func optionalInt(v *int64) string {
 		return ""
 	}
 	return strconv.FormatInt(*v, 10)
+}
+
+func optionalBool(v *bool) string {
+	if v == nil {
+		return "unknown"
+	}
+	return strconv.FormatBool(*v)
 }

@@ -196,6 +196,16 @@ Compare the identical fixture on the landed baseline and candidate under the sam
 instrumentation. It measures gateway-to-database settlement latency; it does not establish production throughput or disk
 retention capacity. Keep measured source hashes, results and failed attempts separate in the qualification receipt.
 
+The review regression fixtures also cover mixed legacy unknown flags and charge constraints, poisoned-audit backoff with
+healthy progress, ordinary audit writers racing accounting linkage, prune/late expiry locks and unrelated live settlement,
+retryable migration lock timeout, bounded health/log error metadata and complete keyset export traversal. The maintenance
+loop catches up across multiple small transactions within its required deadline.
+
+`STARLIGHT_ACCOUNTING_CAPACITY=1` enables a dedicated 45-second controlled capacity fixture. It retains 50,001 unexpired
+captured-shape rows and offers 200 expired receipts/s while cleanup runs every 15 seconds with the default two-second
+budget. It records produced rows, sweep deletions, batches, elapsed time and residual backlog. This does not qualify a
+full seven-day 200/s fleet history, about 121 million receipts, or arbitrary storage and concurrent production load.
+
 ### Windows
 
 CI's `windows` job runs on the hosted Windows Server 2025 runner, with Go 1.27.3 and its Postgres 17.11:

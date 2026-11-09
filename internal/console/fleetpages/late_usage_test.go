@@ -68,6 +68,24 @@ func TestAccountingExportKeepsChargesSeparateAndProjectScoped(t *testing.T) {
 	if code, _ := owner.get("/console/accounting.csv?from=invalid"); code != http.StatusUnprocessableEntity {
 		t.Fatalf("invalid export range=%d", code)
 	}
+	if code, _ := owner.get("/console/accounting.csv?before_id=" + leases[r.project]); code != http.StatusUnprocessableEntity {
+		t.Fatalf("incomplete accounting cursor=%d", code)
+	}
+	r.exec(`INSERT INTO terminal_leases(lease_id,project_id,kind,charged_tokens,charged_micros,observed,
+		ended_at,late_until,receipt,receipt_hash)
+		SELECT gen_random_uuid(),$1,'settled',0,0,true,now(),now()+interval '7 days',
+		jsonb_build_object('model',$2::text)::text,sha256(convert_to(jsonb_build_object('model',$2::text)::text,'UTF8'))
+		FROM generate_series(1,1001)`, r.project, r.model)
+	response, body = manager.do("GET", "/console/accounting.csv?project="+r.project, nil)
+	link := response.Header.Get("Link")
+	if response.StatusCode != http.StatusOK || response.Header.Get("X-Starlight-Truncated") != "true" ||
+		!strings.HasPrefix(link, "</console/accounting.csv?") || !strings.HasSuffix(link, ">; rel=\"next\"") {
+		t.Fatalf("missing retained-history next page: %d %q", response.StatusCode, link)
+	}
+	nextPath := strings.TrimSuffix(strings.TrimPrefix(link, "<"), ">; rel=\"next\"")
+	if code, page := manager.get(nextPath); code != http.StatusOK || strings.Contains(page, leases[otherProject]) {
+		t.Fatalf("cursor page lost project scope: %d %s", code, page)
+	}
 	if r.scalar("SELECT count(*)::text FROM usage_events") != "0" {
 		t.Fatal("late observations entered the charged usage report")
 	}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ashhart/tf-starlight/internal/accounting"
 	"github.com/ashhart/tf-starlight/internal/admission"
 	"github.com/ashhart/tf-starlight/internal/authn"
 	"github.com/ashhart/tf-starlight/internal/buildinfo"
@@ -45,33 +46,34 @@ import (
 
 // Starlight is one running instance and every component it hosts.
 type Starlight struct {
-	Config   config.Config
-	Log      *slog.Logger
-	Pool     *pgxpool.Pool
-	Keys     *keyring.Keyring
-	Inst     Installation
-	Trust    *trust.Trust
-	Metrics  *metrics.Set
-	Auth     *authn.Authenticator
-	Catalog  *catalog.Catalog
-	Admitter *admission.Admitter
-	Policies *gateway.Policies
-	Egress   *providers.Egress
-	Sessions *session.Manager
-	Pages    *web.Renderer
-	Gateway  *gateway.Gateway
-	MCP      *mcpgateway.Handler
-	Control  *control.Server
-	Tasks    *tasks.Service
-	Plans    *plans.Service
-	Login    *login.Handler
-	Console  *console.Console
-	SCIM     *scim.Handler
-	Instance string
-	rateKey  []byte
-	mount    []func(*http.ServeMux)
-	orgMu    sync.Mutex
-	orgAt    time.Time
+	Config     config.Config
+	Log        *slog.Logger
+	Pool       *pgxpool.Pool
+	Keys       *keyring.Keyring
+	Inst       Installation
+	Trust      *trust.Trust
+	Metrics    *metrics.Set
+	Auth       *authn.Authenticator
+	Catalog    *catalog.Catalog
+	Admitter   *admission.Admitter
+	Policies   *gateway.Policies
+	Egress     *providers.Egress
+	Sessions   *session.Manager
+	Pages      *web.Renderer
+	Gateway    *gateway.Gateway
+	MCP        *mcpgateway.Handler
+	Control    *control.Server
+	Tasks      *tasks.Service
+	Plans      *plans.Service
+	Login      *login.Handler
+	Console    *console.Console
+	SCIM       *scim.Handler
+	Instance   string
+	Accounting func(accounting.MaintenanceEvent)
+	rateKey    []byte
+	mount      []func(*http.ServeMux)
+	orgMu      sync.Mutex
+	orgAt      time.Time
 
 	publicCert  *certFile
 	credentials *providers.Credentials
@@ -151,6 +153,9 @@ func (t *Starlight) org(ctx context.Context) string {
 }
 
 func (t *Starlight) build() error {
+	if t.Config.HasRole("control") {
+		t.Accounting = t.Metrics.RegisterAccountingMaintenance()
+	}
 	if t.Config.Metrics.ReplicaObservations {
 		t.Metrics.RegisterReplicaObservations(t.Pool)
 	}

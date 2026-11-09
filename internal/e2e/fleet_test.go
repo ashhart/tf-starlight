@@ -104,7 +104,8 @@ func startStarlight(t *testing.T, edit func(*config.Config)) *fleet {
 	go tw.Control.Listen(ctx)
 	go tw.Admitter.Waker.Run(ctx, tw.Pool)
 	go admission.Heartbeat(ctx, tw.Pool, tw.Instance, "test", "test")
-	ctrl := &scheduler.Controller{Pool: tw.Pool, Instance: tw.Instance, Every: 300 * time.Millisecond}
+	ctrl := &scheduler.Controller{Pool: tw.Pool, Instance: tw.Instance, Every: 300 * time.Millisecond,
+		Log: tw.Log, Accounting: tw.Accounting}
 	go (&scheduler.Elector{Pool: tw.Pool, Instance: tw.Instance}).Run(ctx, ctrl.Lead)
 	f := &fleet{cfg: cfg, t: t, ctx: ctx, pool: pool, starlight: tw, public: public, nodeURL: nodeURL}
 	f.catalogue()

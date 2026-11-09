@@ -37,6 +37,13 @@ func Prune(ctx context.Context, pool *pgxpool.Pool) (int, error) {
 		if len(ids) == 0 {
 			return nil
 		}
+		if err := tx.QueryRow(ctx, `SELECT ARRAY(SELECT t.lease_id::text FROM terminal_leases t
+			WHERE t.lease_id=ANY($1::uuid[]) AND t.late_until < now()
+			AND NOT EXISTS (SELECT 1 FROM accounting_audit a WHERE a.lease_id=t.lease_id AND a.audit_seq IS NULL)
+			AND NOT EXISTS (SELECT 1 FROM late_usage l WHERE l.lease_id=t.lease_id AND l.created_at >= now()-interval '90 days'))`, ids).
+			Scan(&ids); err != nil {
+			return err
+		}
 		for _, table := range []string{"accounting_audit", "late_usage", "terminal_leases"} {
 			if _, err := tx.Exec(ctx, "DELETE FROM "+table+" WHERE lease_id=ANY($1::uuid[])", ids); err != nil {
 				return err

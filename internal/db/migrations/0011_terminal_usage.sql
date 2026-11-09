@@ -1,15 +1,20 @@
+SET LOCAL lock_timeout = '2s';
+
 CREATE TABLE terminal_leases (
     lease_id uuid PRIMARY KEY,
     project_id uuid,
     kind text NOT NULL CHECK (kind IN ('settled', 'released', 'reaped', 'legacy_deleted')),
     charged_tokens bigint CHECK (charged_tokens >= 0),
     charged_micros bigint CHECK (charged_micros >= 0),
-    observed boolean NOT NULL,
+    observed boolean,
     ended_at timestamptz NOT NULL,
     late_until timestamptz NOT NULL,
     receipt text NOT NULL,
     receipt_hash bytea NOT NULL CHECK (receipt_hash = sha256(convert_to(receipt, 'UTF8'))),
-    CHECK ((charged_tokens IS NULL) = (charged_micros IS NULL))
+    CHECK ((charged_tokens IS NULL) = (charged_micros IS NULL)),
+    CHECK ((kind = 'legacy_deleted') = (charged_tokens IS NULL)),
+    CHECK (kind <> 'legacy_deleted' OR observed IS NULL),
+    CHECK (kind NOT IN ('released','reaped') OR observed IS FALSE)
 );
 CREATE INDEX terminal_leases_expiry ON terminal_leases (late_until, lease_id);
 CREATE INDEX terminal_leases_project ON terminal_leases (project_id, ended_at DESC, lease_id);
@@ -29,11 +34,16 @@ CREATE TABLE accounting_audit (
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
     audit_seq bigint,
     audit_hash bytea,
+    attempts int NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+    next_attempt_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    last_error_class text NOT NULL DEFAULT '' CHECK (last_error_class IN
+        ('','deadline','cancelled','integrity','lock_timeout','transaction','query_cancelled','postgres','other')),
     PRIMARY KEY (lease_id, kind),
     CHECK ((audit_seq IS NULL) = (audit_hash IS NULL)),
     CHECK (audit_hash IS NULL OR octet_length(audit_hash) = 32)
 );
 CREATE INDEX accounting_audit_pending ON accounting_audit (created_at, lease_id) WHERE audit_seq IS NULL;
+CREATE INDEX accounting_audit_due ON accounting_audit (next_attempt_at, created_at, lease_id) WHERE audit_seq IS NULL;
 
 CREATE FUNCTION starlight_accounting_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -46,9 +56,18 @@ CREATE TRIGGER late_usage_immutable BEFORE UPDATE ON late_usage
 
 CREATE FUNCTION starlight_accounting_link_once() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-    IF OLD.audit_seq IS NOT NULL OR NEW.audit_seq IS NULL OR NEW.audit_hash IS NULL
-        OR (to_jsonb(NEW) - 'audit_seq' - 'audit_hash') <> (to_jsonb(OLD) - 'audit_seq' - 'audit_hash') THEN
-        RAISE EXCEPTION 'accounting audit link is immutable' USING ERRCODE = '23514';
+    IF OLD.audit_seq IS NOT NULL
+        OR (to_jsonb(NEW) - ARRAY['audit_seq','audit_hash','attempts','next_attempt_at','last_error_class'])
+        <> (to_jsonb(OLD) - ARRAY['audit_seq','audit_hash','attempts','next_attempt_at','last_error_class']) THEN
+        RAISE EXCEPTION 'accounting audit identity and link are immutable' USING ERRCODE = '23514';
+    END IF;
+    IF NEW.audit_seq IS NULL THEN
+        IF NEW.audit_hash IS NOT NULL OR NEW.attempts < OLD.attempts THEN
+            RAISE EXCEPTION 'invalid accounting audit retry transition' USING ERRCODE = '23514';
+        END IF;
+    ELSIF NEW.audit_hash IS NULL OR NEW.attempts <> OLD.attempts OR NEW.next_attempt_at <> OLD.next_attempt_at
+        OR NEW.last_error_class <> OLD.last_error_class THEN
+        RAISE EXCEPTION 'invalid accounting audit link transition' USING ERRCODE = '23514';
     END IF;
     RETURN NEW;
 END $$;
@@ -91,7 +110,7 @@ END $$;
 CREATE FUNCTION starlight_legacy_terminal() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM terminal_leases WHERE lease_id = OLD.id) THEN
-        PERFORM starlight_terminal(OLD, 'legacy_deleted', NULL, NULL, false);
+        PERFORM starlight_terminal(OLD, 'legacy_deleted', NULL, NULL, NULL);
     END IF;
     RETURN OLD;
 END $$;
@@ -193,7 +212,7 @@ END $$;
 CREATE FUNCTION starlight_settle_result(r jsonb) RETURNS text LANGUAGE plpgsql AS $$
 BEGIN
     IF NOT starlight_end_lease((r->>'lease')::uuid, (r->>'tokens')::bigint, (r->>'micros')::bigint,
-        'settled', coalesce((r->>'observed')::boolean, false)) THEN
+        'settled', (r->>'observed')::boolean) THEN
         RETURN starlight_late_usage(r);
     END IF;
     INSERT INTO usage_events (id, created_at, request_id, principal_type, principal_id, user_id, project_id, api_key_id, task_id, model_id,

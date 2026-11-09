@@ -34,6 +34,10 @@ func TestLateAuditRollbackRetryAndImmutableLink(t *testing.T) {
 	}
 	assertSettlementTotals(t, f, 0, 0, 100)
 	f.exec(t, "DROP TRIGGER reject_late ON audit_events")
+	if n, err := accounting.Drain(ctx, f.pool, 100); err != nil || n != 0 {
+		t.Fatalf("failed lease did not respect retry backoff: %d, %v", n, err)
+	}
+	f.exec(t, "UPDATE accounting_audit SET next_attempt_at=now() WHERE audit_seq IS NULL")
 	var workers sync.WaitGroup
 	for range 8 {
 		workers.Go(func() {
