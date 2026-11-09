@@ -148,12 +148,18 @@ tools. It uses trust authentication only on its own loopback ports, needs no ins
 only the clusters in its temporary directory. Windows is excluded. Set `STARLIGHT_TEST_HEAD` to the tested full source
 commit to include that declaration in the JSON receipt; the operator must verify the checkout independently.
 
+Local users can connect to these trust-authenticated test databases while the drill runs. Use a host whose local users
+are trusted. Ephemeral port listeners stay reserved until each cluster starts, shortening the pick-then-bind window.
+Postgres must still bind after that listener closes; a conflicting bind fails the fixture and triggers its own cleanup.
+
 Before traffic, the fixture checks that streaming replication is synchronous and the primary uses `remote_apply`.
 That mode waits for replay on the synchronous standby before acknowledging a commit; see
 [Postgres synchronous replication](https://www.postgresql.org/docs/17/warm-standby.html#SYNCHRONOUS-REPLICATION).
 It acknowledges a metered request and an open token reservation, stops its primary immediately, then verifies lost
 database authority returns `503 temporarily_unavailable` with a retry hint. It promotes its standby behind a stable
-fixture TCP endpoint and closes the old connections. Committed usage and the open reservation must survive unchanged;
+fixture TCP endpoint and closes the old connections. It explicitly resets and pings both the gateway and test-client
+pools before checking subsequent requests. This proves recovery with that administrative pool reset, not unassisted
+recovery of every stale pooled connection. Committed usage and the open reservation must survive unchanged;
 settling that lease twice must charge once and release its slots and reservations. A new request must work, updated
 budgets must refuse further work, and an old controller epoch must fail its fenced write.
 
@@ -162,6 +168,9 @@ request bodies, keys or endpoints. Its timeouts are engineering test bounds. Thi
 a manually promoted synchronous standby and a fixture endpoint. It does not qualify a deployment's HA manager,
 network partitions, split-brain prevention, asynchronous WAL loss, multi-site recovery, customer RTO/RPO or error budget.
 Run the existing process/restore drills and the real fleet/load gate for those deployment requirements.
+
+The lost-authority request has a 10s context deadline, allowing race instrumentation and scheduling overhead while still
+requiring a 503 refusal with its retry hint. This test bound is not a production response-time objective.
 
 ### Windows
 

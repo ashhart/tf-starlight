@@ -24,11 +24,12 @@ type postgresPair struct {
 	primaryAddress, standbyAddress string
 	tools                          map[string]string
 	endpoint                       *postgresEndpoint
+	reserved                       map[string]net.Listener
 }
 
 func newPostgresPair(t *testing.T) *postgresPair {
 	t.Helper()
-	p := &postgresPair{t: t, tools: map[string]string{}}
+	p := &postgresPair{t: t, tools: map[string]string{}, reserved: map[string]net.Listener{}}
 	versionPattern := regexp.MustCompile(`PostgreSQL\) (17\.[0-9]+)`)
 	version := ""
 	for _, name := range []string{"initdb", "pg_ctl", "pg_basebackup"} {
@@ -47,11 +48,8 @@ func newPostgresPair(t *testing.T) *postgresPair {
 	t.Logf("isolated Postgres tools %s", version)
 	dir := t.TempDir()
 	p.primary, p.standby = filepath.Join(dir, "primary"), filepath.Join(dir, "standby")
-	p.primaryAddress, p.standbyAddress = freeAddr(t), freeAddr(t)
-	for p.standbyAddress == p.primaryAddress {
-		p.standbyAddress = freeAddr(t)
-	}
 	t.Cleanup(p.close)
+	p.primaryAddress, p.standbyAddress = p.reserveAddress(), p.reserveAddress()
 	p.run("initdb", "-D", p.primary, "-U", "starlight_test", "--auth=trust", "--no-locale", "--encoding=UTF8")
 	p.start(p.primary, p.primaryAddress)
 	primary := p.connect(p.primaryAddress)
@@ -125,7 +123,24 @@ func (p *postgresPair) start(dir, address string) {
 		p.t.Fatal(err)
 	}
 	options := "-h 127.0.0.1 -p " + port + " -c unix_socket_directories= -c max_connections=100 -c wal_level=replica -c max_wal_senders=4 -c wal_receiver_status_interval=1s"
+	if ln := p.reserved[address]; ln != nil {
+		if err := ln.Close(); err != nil {
+			p.t.Fatalf("releasing own database port reservation: %v", err)
+		}
+		delete(p.reserved, address)
+	}
 	p.run("pg_ctl", "-D", dir, "-l", dir+".log", "-o", options, "-t", "20", "-w", "start")
+}
+
+func (p *postgresPair) reserveAddress() string {
+	p.t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		p.t.Fatal(err)
+	}
+	address := ln.Addr().String()
+	p.reserved[address] = ln
+	return address
 }
 
 func (p *postgresPair) connect(address string) *pgx.Conn {
@@ -159,6 +174,9 @@ func (p *postgresPair) promote() {
 }
 
 func (p *postgresPair) close() {
+	for _, ln := range p.reserved {
+		_ = ln.Close()
+	}
 	if p.endpoint != nil {
 		p.endpoint.close()
 	}

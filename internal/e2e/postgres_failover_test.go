@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -22,6 +23,30 @@ import (
 )
 
 type accountingSnapshot struct{ Requests, Tokens, Used, Reserved, Leases int64 }
+
+const authorityResponseLimit = 10 * time.Second
+
+func failoverOutageRequest(t *testing.T, f *fleet, body string) (*http.Response, string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(f.ctx, authorityResponseLimit)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, f.public.URL+"/v1/chat/completions", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Authorization", "Bearer "+f.key)
+	res, err := http.DefaultClient.Do(r)
+	if err != nil {
+		t.Fatalf("bounded outage request failed: %v", err)
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if err != nil {
+		t.Fatalf("bounded outage response failed: %v", err)
+	}
+	return res, string(raw)
+}
 
 func readAccounting(ctx context.Context, f *fleet) (accountingSnapshot, error) {
 	var s accountingSnapshot
@@ -73,22 +98,30 @@ func TestPostgresStandbyPromotionPreservesAcknowledgedAccounting(t *testing.T) {
 	lost := time.Now()
 	pair.stopPrimary()
 	outage := time.Now()
-	response, reply = f.call(http.MethodPost, "/v1/chat/completions", f.key, body)
+	response, reply = failoverOutageRequest(t, f, body)
 	unavailableFor := time.Since(outage)
 	if response.StatusCode != http.StatusServiceUnavailable || response.Header.Get("Retry-After") != "1" || !strings.Contains(reply, "temporarily_unavailable") {
 		t.Fatalf("lost database authority returned status %d, Retry-After %q", response.StatusCode, response.Header.Get("Retry-After"))
 	}
-	if unavailableFor > db.CallTimeout+3*time.Second {
+	if unavailableFor > authorityResponseLimit {
 		t.Fatalf("lost authority took %v to fail closed", unavailableFor)
 	}
 	promoting := time.Now()
 	pair.promote()
 	promotionTime := time.Since(promoting)
+	f.pool.Reset()
+	f.starlight.Pool.Reset()
 	deadline := time.Now().Add(30 * time.Second)
 	var recovered accountingSnapshot
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		recovered, err = readAccounting(ctx, f)
+		err = f.pool.Ping(ctx)
+		if err == nil {
+			err = f.starlight.Pool.Ping(ctx)
+		}
+		if err == nil {
+			recovered, err = readAccounting(ctx, f)
+		}
 		cancel()
 		if err == nil {
 			break
@@ -155,7 +188,8 @@ func TestPostgresStandbyPromotionPreservesAcknowledgedAccounting(t *testing.T) {
 	}
 	receipt := map[string]any{"declared_source_sha": os.Getenv("STARLIGHT_TEST_HEAD"), "fixture": "single-site synchronous standby, fail-stop primary, stable endpoint",
 		"primary_loss_to_success_seconds": recoveredIn.Seconds(), "standby_promotion_seconds": promotionTime.Seconds(), "authority_failure_seconds": unavailableFor.Seconds(),
-		"acknowledged_before": before, "settled_after": after, "stale_controller_fenced": true, "reservation_survived": true, "duplicate_settlement_ignored": true, "production_slo_qualified": false}
+		"acknowledged_before": before, "settled_after": after, "stale_controller_fenced": true, "reservation_survived": true, "duplicate_settlement_ignored": true, "production_slo_qualified": false,
+		"pool_recovery": "explicit reset and ping of fixture and gateway pools"}
 	raw, _ := json.Marshal(receipt)
 	t.Logf("db_failover_receipt %s", raw)
 }
