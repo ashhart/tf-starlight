@@ -21,7 +21,7 @@ are rejected. The response must match the request ID and contain one final resul
 or RPC error. Tool results require a content array and `resultType: complete`.
 
 SSE can contain bounded comments and requested `notifications/progress` messages
-before the final response. Progress tokens must match the originating request and progress must increase.
+before the final response. LF, CRLF and CR line endings and an initial UTF-8 BOM are accepted. Progress tokens must match the originating request and progress must increase.
 Independent server RPC, input-required results, logging, resources, prompts,
 subscriptions and task extensions are outside this profile. Legacy initialize,
 sessions, GET/DELETE streams and Last-Event-ID resumption are rejected. Modern
@@ -78,8 +78,8 @@ dispatched tool operation may continue independently of its connection.
 ## Bounds and execution outcomes
 
 Requests are limited to 64 KiB, JSON depth 32 and 8192 values. Replies are limited to
-8MiB; individual SSE events are limited to 1 MiB. Every wire byte, including comments,
-counts against the stream bound. Timeout must be 1s through1m and covers request-body
+8MiB; individual SSE events are limited to 1 MiB. All bytes read before the final response, including comments,
+count against the stream bound. Timeout must be 1s through1m and covers request-body
 reading, policy checks, upstream exchange and client writes. Each instance permits
 1 through 64 concurrent requests and queues none. Excess requests receive 429.
 These are per-instance limits, not a shared fleet tool budget. The same key's

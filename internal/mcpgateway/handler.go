@@ -98,7 +98,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := http.NewResponseController(w)
 	_ = rc.SetReadDeadline(deadline)
 	_ = rc.SetWriteDeadline(deadline)
-	defer func() { _ = rc.SetReadDeadline(time.Time{}); _ = rc.SetWriteDeadline(time.Time{}) }()
+	defer func() {
+		if time.Now().Before(deadline) {
+			_ = rc.SetReadDeadline(time.Time{})
+			_ = rc.SetWriteDeadline(time.Time{})
+		}
+	}()
 	ctx, cancel := context.WithDeadline(r.Context(), deadline)
 	defer cancel()
 	r = r.WithContext(ctx)

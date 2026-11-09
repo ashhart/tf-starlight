@@ -53,3 +53,14 @@ func TestProgressStreamCannotRepeatOrRegressItsCounter(t *testing.T) {
 		}
 	}
 }
+
+func TestSSEAcceptsStandardLineEndingsAndOnlyTheInitialBOM(t *testing.T) {
+	final := `{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","content":[]}}`
+	for _, ending := range []string{"\n", "\r\n", "\r"} {
+		body := "\xef\xbb\xbf: keepalive" + ending + ending + "data: " + final + ending + ending
+		w := httptest.NewRecorder()
+		if err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 4096, 1024); err != nil || !strings.Contains(w.Body.String(), "resultType") {
+			t.Fatalf("valid SSE ending %q refused: %v", ending, err)
+		}
+	}
+}

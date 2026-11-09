@@ -14,29 +14,59 @@ type eventReader struct {
 	reader    *bufio.Reader
 	remaining int64
 	maxFrame  int
+	skipLF    bool
+	began     bool
 }
 
 func (r *eventReader) next() ([]byte, error) {
 	var block []byte
+	frame := 0
 	for {
-		line, err := r.reader.ReadSlice('\n')
-		r.remaining -= int64(len(line))
-		if r.remaining < 0 || len(block)+len(line) > r.maxFrame {
-			return nil, errors.New("MCP event stream exceeds its bounds")
-		}
-		block = append(block, line...)
-		if err == bufio.ErrBufferFull {
-			continue
-		}
+		line, err := r.line(&frame)
 		if err != nil {
-			if err == io.EOF && len(block) == 0 {
+			if err == io.EOF && frame == 0 {
 				return nil, io.EOF
 			}
 			return nil, errors.New("MCP event stream is incomplete")
 		}
-		if bytes.Equal(line, []byte("\n")) || bytes.Equal(line, []byte("\r\n")) {
+		if !r.began {
+			r.began = true
+			line = bytes.TrimPrefix(line, []byte{0xef, 0xbb, 0xbf})
+		}
+		block = append(block, line...)
+		block = append(block, '\n')
+		if len(line) == 0 {
 			return block, nil
 		}
+	}
+}
+
+func (r *eventReader) line(frame *int) ([]byte, error) {
+	var line []byte
+	for {
+		ch, err := r.reader.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		r.remaining--
+		*frame++
+		if r.remaining < 0 || *frame > r.maxFrame {
+			return nil, errors.New("MCP event stream exceeds its bounds")
+		}
+		if r.skipLF {
+			r.skipLF = false
+			if ch == '\n' {
+				continue
+			}
+		}
+		if ch == '\r' {
+			r.skipLF = true
+			return line, nil
+		}
+		if ch == '\n' {
+			return line, nil
+		}
+		line = append(line, ch)
 	}
 }
 

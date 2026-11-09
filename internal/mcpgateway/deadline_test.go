@@ -3,6 +3,7 @@ package mcpgateway
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +13,14 @@ import (
 )
 
 func TestUpstreamTimeoutEndsWithoutRetry(t *testing.T) {
-	h, calls, events := handlerFixture(t, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
+	h, calls, events := handlerFixture(t, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		select {
+		case <-r.Context().Done():
+		case <-time.After(3 * time.Second):
+			t.Error("fixture did not observe upstream cancellation")
+		}
+	}))
 	h.options.Config.Timeout.Duration = time.Second
 	start := time.Now()
 	w := callHandler(h, "tools/call", nil)
@@ -45,6 +53,6 @@ func TestSlowRequestBodyCannotHoldAConcurrencySlotPastItsDeadline(t *testing.T) 
 		}
 	}
 	if time.Since(start) > 3*time.Second || calls.Load() != 0 || len(h.slots) != 0 {
-		t.Fatal("slow body retained authority or capacity")
+		t.Fatalf("slow body retained authority or capacity: elapsed=%s calls=%d slots=%d", time.Since(start), calls.Load(), len(h.slots))
 	}
 }
