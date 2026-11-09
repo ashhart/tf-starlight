@@ -57,6 +57,8 @@ jobs:
         run: go vet ./...
       - name: lean check
         run: go run ./tools/leancheck .
+      - name: matched shadow admission and gateway overhead profiles
+        run: STARLIGHT_SHADOW_OVERHEAD=1 go test -p 1 -count=1 -timeout=8m -run '^TestRoutingShadowOverhead$' -v ./internal/admission ./internal/e2e
       - name: matched controlled routing traces
         run: |
           for trace in tools/routing-replay/testdata/*.json; do

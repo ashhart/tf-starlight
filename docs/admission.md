@@ -130,6 +130,13 @@ transfer, and reservation sums outside the exact integer bound remain unknown. T
 for the shadow cap. The extra query work grows with the eligible candidate set; measure gateway/database overhead on your
 fleet before leaving the flag enabled. The optional Prometheus replica exporter is independent of this flag.
 
+The opt-in profile `STARLIGHT_SHADOW_OVERHEAD=1 go test -p 1 -count=1 -run '^TestRoutingShadowOverhead$' -v ./internal/admission ./internal/e2e`
+compares flag-off/on in matched ABBA order. Admission cases use 1, 32, 128 and 129 eligible replicas with actual occupied
+leases and fresh, stale, missing or oversized observations. Observations refresh outside timing every 25 requests.
+Reports include admission and full-cycle p50/p95; tests require identical actual affinity and exact usage/reservation/lease
+effects. A separate gateway/node/fake-engine case verifies choices, usage, route and configured comparison counts.
+These sequential controlled fixtures measure flag overhead, not concurrent real-device capacity or routing gain.
+
 The actual successful lease carries the decision through settlement. Metrics record comparison availability,
 agreement/disagreement and both effort scores without target IDs or request content. Only successful attempts with
 observed usage contribute actual admit-to-finished-relay time divided by the actual route's score. The outer admission
