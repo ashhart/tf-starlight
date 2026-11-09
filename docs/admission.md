@@ -126,8 +126,10 @@ measurements and more than 128 eligible local candidates produce a named unavail
 no proposed target or numeric score. Cloud targets are reported separately and receive no local-effort comparison.
 
 Shadow metadata is read with the candidate query only when enabled. Each stored measurement is capped at 4 KiB before
-transfer, and reservation sums outside the exact integer bound remain unknown. The real candidate set is never truncated
-for the shadow cap. The extra query work grows with the eligible candidate set; measure gateway/database overhead on your
+extracting only the fixed phase fields. Unknown fields are not transferred. The exact pin, exclusion and single-target
+filters apply before the comparison cap; above that cap no metadata or reservation sums are fetched. Reservation sums
+outside the exact integer bound remain unknown. The real candidate set is never truncated for the shadow cap.
+The extra query work grows with the eligible candidate set; measure gateway/database overhead on your
 fleet before leaving the flag enabled. The optional Prometheus replica exporter is independent of this flag.
 
 The opt-in profile `STARLIGHT_SHADOW_OVERHEAD=1 go test -p 1 -count=1 -run '^TestRoutingShadowOverhead$' -v ./internal/admission ./internal/e2e`

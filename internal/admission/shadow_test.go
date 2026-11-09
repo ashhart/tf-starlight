@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ashhart/tf-starlight/internal/admission"
+	"github.com/ashhart/tf-starlight/internal/authn"
 	"github.com/ashhart/tf-starlight/internal/ids"
 	"github.com/ashhart/tf-starlight/internal/levels"
 	"github.com/ashhart/tf-starlight/internal/routing"
@@ -103,5 +104,62 @@ func TestShadowUsesEligibleTargetsOnly(t *testing.T) {
 	}
 	if err := a.Settle(context.Background(), lease, admission.Usage{Observed: true}, record()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestShadowCapUsesTheSamePinnedAndExcludedCandidates(t *testing.T) {
+	f := newFleet(t, 2)
+	ctx := context.Background()
+	other := ids.New()
+	f.exec(t, `INSERT INTO deployments(id,model_id,name,spec)
+		SELECT $1,model_id,'other',spec FROM deployments WHERE id=$2`, other, f.deployment)
+	var node string
+	if err := f.pool.QueryRow(ctx, "SELECT node_id FROM replicas WHERE id=$1", f.replica).Scan(&node); err != nil {
+		t.Fatal(err)
+	}
+	extra := make([]string, routing.MaxShadowCandidates)
+	for i := range extra {
+		extra[i] = ids.New()
+	}
+	f.exec(t, `INSERT INTO replicas(id,deployment_id,deployment_revision,node_id,state,slots,epoch)
+		SELECT id,$2,1,$3,'ready',2,1 FROM unnest($1::uuid[]) AS x(id)`, extra, other, node)
+	f.exec(t, `UPDATE replicas SET live=jsonb_build_object('generation',generation,'observed_at',now(),
+		'window_seconds',1,'prompt_tokens_per_second',100,'tokens_per_second',100,'running',0,'waiting',0),live_at=now()`)
+	a := f.admitter()
+	for _, mode := range []string{"only", "exclude", "pin"} {
+		t.Run(mode, func(t *testing.T) {
+			for _, enabled := range []bool{false, true} {
+				req := f.request(levels.Standard, 5*time.Second)
+				switch mode {
+				case "only":
+					req.Only = f.replica
+				case "exclude":
+					req.Exclude = extra
+				case "pin":
+					req.Pins = []authn.Pin{{Deployment: f.deployment, Revision: 1}}
+				}
+				if enabled {
+					req.ShadowWork = &routing.Work{Prompt: 100, Completion: 10}
+				}
+				lease, err := a.Admit(ctx, req)
+				if err != nil || lease.Target.ReplicaID != f.replica {
+					t.Fatalf("shadow=%v changed filtered eligibility: %+v %v", enabled, lease, err)
+				}
+				if enabled && (lease.Shadow == nil || lease.Shadow.Reason != "no_alternative") {
+					t.Fatalf("cap counted filtered-out candidates: %+v", lease.Shadow)
+				}
+				if !enabled && lease.Shadow != nil {
+					t.Fatal("disabled admission produced metadata")
+				}
+				if err := a.Settle(ctx, lease, admission.Usage{Observed: true}, record()); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+	var leases, events int
+	if err := f.pool.QueryRow(ctx, "SELECT (SELECT count(*) FROM leases),(SELECT count(*) FROM usage_events)").
+		Scan(&leases, &events); err != nil || leases != 0 || events != 6 {
+		t.Fatalf("filtered profiles changed accounting: leases=%d events=%d: %v", leases, events, err)
 	}
 }

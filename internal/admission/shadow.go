@@ -15,9 +15,27 @@ type shadowWork struct {
 	reserved   string
 }
 
-const shadowColumns = `,CASE WHEN octet_length(r.live::text)<=4096 THEN r.live ELSE '{}'::jsonb END,r.generation,
-	(SELECT coalesce(sum(l.reserved_tokens),0)::text FROM leases l
-	WHERE l.replica_id=r.id AND l.heartbeat_at>now()-interval '` + staleSQL + `')`
+const shadowFilter = ` AND ($5='' OR r.id::text=$5) AND NOT (r.id::text=ANY($6::text[]))
+	AND (cardinality($7::text[])=0 OR (d.id::text||':'||d.revision::text)=ANY($7::text[]))`
+
+func shadowColumns() string {
+	limit := strconv.Itoa(routing.MaxShadowCandidates)
+	return `,CASE WHEN count(*) OVER()<=` + limit + ` AND octet_length(r.live::text)<=4096 THEN
+		jsonb_build_object('generation',r.live->'generation','observed_at',r.live->'observed_at',
+		'window_seconds',r.live->'window_seconds','prompt_tokens_per_second',r.live->'prompt_tokens_per_second',
+		'tokens_per_second',r.live->'tokens_per_second','running',r.live->'running','waiting',r.live->'waiting')
+		ELSE '{}'::jsonb END,r.generation,CASE WHEN count(*) OVER()<=` + limit + ` THEN
+		(SELECT coalesce(sum(l.reserved_tokens),0)::text FROM leases l
+		WHERE l.replica_id=r.id AND l.heartbeat_at>now()-interval '` + staleSQL + `') ELSE '' END`
+}
+
+func shadowQueryArgs(req Request) []any {
+	pins := make([]string, len(req.Pins))
+	for i, p := range req.Pins {
+		pins[i] = p.Deployment + ":" + strconv.Itoa(p.Revision)
+	}
+	return []any{req.Only, append([]string{}, req.Exclude...), pins}
+}
 
 func shadowDecision(req Request, local []localCand, target Target, now time.Time) routing.Decision {
 	if !target.Local() {

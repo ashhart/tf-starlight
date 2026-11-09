@@ -25,9 +25,11 @@ func candidates(ctx context.Context, tx db.Querier, req Request) ([]localCand, [
 	var local []localCand
 	var all []string
 	if req.Local {
-		extra := ""
+		extra, filter := "", ""
+		args := []any{req.ModelID, int(req.Class), req.Isolated, nullID(req.Who.ProjectID)}
 		if req.ShadowWork != nil {
-			extra = shadowColumns
+			extra, filter = shadowColumns(), shadowFilter
+			args = append(args, shadowQueryArgs(req)...)
 		}
 		rows, err := tx.Query(ctx, `SELECT r.id, r.node_id, n.address, d.id, d.revision, m.name, r.slots,
 			(SELECT count(*) FROM leases l WHERE l.replica_id = r.id AND l.heartbeat_at > now() - interval '`+staleSQL+`')`+extra+`
@@ -35,8 +37,8 @@ func candidates(ctx context.Context, tx db.Querier, req Request) ([]localCand, [
 			WHERE d.model_id = $1 AND d.status = 'active' AND r.desired = 'running' AND r.state = 'ready' AND r.deployment_revision = d.revision
 			AND n.status = 'active' AND n.last_seen_at > now() - interval '90 seconds'
 			AND array_position(ARRAY['public','internal','confidential','restricted'], n.max_classification) - 1 >= $2
-			AND starlight_members_eligible(r.id, $2) AND (NOT $3 OR `+privateCache("$4")+`)
-			ORDER BY r.id`, req.ModelID, int(req.Class), req.Isolated, nullID(req.Who.ProjectID))
+			AND starlight_members_eligible(r.id, $2) AND (NOT $3 OR `+privateCache("$4")+`)`+filter+`
+			ORDER BY r.id`, args...)
 		if err != nil {
 			return nil, nil, nil, err
 		}
