@@ -41,7 +41,7 @@ func newUpstream(endpoint, bearer string, internal bool, offline func() bool) (*
 	if strings.ContainsAny(bearer, "\r\n") {
 		return nil, errors.New("MCP upstream credential is invalid")
 	}
-	egress := providers.NewEgress()
+	egress := providers.NewDirectEgress()
 	egress.Allow(map[string]bool{u.Hostname(): internal}, false)
 	return &upstream{URL: u, Bearer: bearer, HTTP: egress.Client(), Timeout: 30 * time.Second,
 		IsOffline: offline, MaxBytes: 8 << 20, MaxFrame: 1 << 20}, nil

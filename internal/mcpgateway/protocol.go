@@ -73,6 +73,10 @@ func parseRequest(headers http.Header, raw []byte) (request, *failure) {
 	if json.Unmarshal(params["_meta"], &meta) != nil || meta == nil {
 		return r, invalid()
 	}
+	if fieldAliases(meta, "progressToken", "io.modelcontextprotocol/protocolVersion", "io.modelcontextprotocol/clientInfo",
+		"io.modelcontextprotocol/clientCapabilities", "io.modelcontextprotocol/logLevel", "io.modelcontextprotocol/related-task") {
+		return r, invalid()
+	}
 	if meta["io.modelcontextprotocol/logLevel"] != nil || meta["io.modelcontextprotocol/related-task"] != nil {
 		return r, &failure{400, -32602, "Logging and tasks are outside this transport profile"}
 	}

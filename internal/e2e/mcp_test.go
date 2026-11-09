@@ -126,25 +126,29 @@ func TestGovernedMCPRouteUsesFreshAuthorityAndSeparateAccounting(t *testing.T) {
 	if status := call(key, "", "X-Starlight-Project", ids.New()); status != 403 || calls.Load() != 1 {
 		t.Fatal("client project hint escaped fixed project")
 	}
-	exec(t, pool, "UPDATE projects SET secrets_guard='block'")
 	original := body
-	body = []byte(strings.Replace(string(body), "private-argument", key, 1))
-	if status := call(key, ""); status != 403 || calls.Load() != 1 {
-		t.Fatal("project secret screen bypassed")
+	for _, mode := range []string{"local", "block"} {
+		exec(t, pool, "UPDATE projects SET secrets_guard=$1", mode)
+		body = []byte(strings.Replace(string(original), "private-argument", key, 1))
+		if status := call(key, ""); status != 403 || calls.Load() != 1 {
+			t.Fatal("project secret screen bypassed")
+		}
+		body = original
+		if status := call(key, "", "Mcp-Param-Opaque", "=?base64?"+base64.StdEncoding.EncodeToString([]byte(key))+"?="); status != 403 || calls.Load() != 1 {
+			t.Fatal("encoded MCP header bypassed secret screen")
+		}
 	}
-	body = original
-	if status := call(key, "", "Mcp-Param-Opaque", "=?base64?"+base64.StdEncoding.EncodeToString([]byte(key))+"?="); status != 403 || calls.Load() != 1 {
-		t.Fatal("encoded MCP header bypassed secret screen")
-	}
-	var inference, events int
+	var inference, events, denials, attempts int
 	var details string
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM usage_events").Scan(&inference); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(ctx, "SELECT count(*),string_agg(details::text,' ') FROM audit_events WHERE action LIKE 'mcp.%'").Scan(&events, &details); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FILTER(WHERE action IN('mcp.begin','mcp.end')),
+		count(*) FILTER(WHERE action='mcp.deny'),count(DISTINCT details->>'attempt_id'),string_agg(details::text,' ')
+		FROM audit_events WHERE action LIKE 'mcp.%'`).Scan(&events, &denials, &attempts, &details); err != nil {
 		t.Fatal(err)
 	}
-	if inference != 0 || events != 2 || strings.Contains(details, "private-argument") || strings.Contains(details, "private-result") || strings.Contains(details, key) || strings.Contains(details, "fixture-upstream") {
+	if inference != 0 || events != 2 || denials != 12 || attempts != 13 || strings.Contains(details, "private-argument") || strings.Contains(details, "private-result") || strings.Contains(details, key) || strings.Contains(details, "fixture-upstream") {
 		t.Fatal("tool accounting mixed inference or recorded content/credentials")
 	}
 	if _, err := audit.Verify(ctx, pool); err != nil {

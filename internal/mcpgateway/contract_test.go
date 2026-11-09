@@ -30,7 +30,7 @@ func TestMirroredHeaderDefinitionsExcludeOnlyInvalidTools(t *testing.T) {
 			t.Fatal("invalid header definition accepted")
 		}
 		raw := `{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","tools":[{"name":"bad","inputSchema":` + schema + `},{"name":"echo","inputSchema":{}}]}}`
-		got, final, err := response([]byte(raw), request{ID: json.RawMessage(`1`), Method: "tools/list"}, map[string]bool{"bad": true, "echo": true}, 1<<20)
+		got, final, err := response([]byte(raw), request{ID: json.RawMessage(`1`), Method: "tools/list"}, map[string]bool{"bad": true, "echo": true}, 1<<20, "")
 		if err != nil || !final || strings.Contains(string(got), `"name":"bad"`) || !strings.Contains(string(got), `"name":"echo"`) {
 			t.Fatal("invalid tool hid a valid sibling")
 		}
@@ -40,7 +40,7 @@ func TestMirroredHeaderDefinitionsExcludeOnlyInvalidTools(t *testing.T) {
 func TestNotificationsMustMatchExplicitRequestProgress(t *testing.T) {
 	expected := request{ID: json.RawMessage(`1`), Method: "tools/call", progress: json.RawMessage(`"job"`)}
 	good := `{"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"job","progress":1,"total":2}}`
-	if _, final, err := response([]byte(good), expected, nil, 4096); err != nil || final {
+	if _, final, err := response([]byte(good), expected, nil, 4096, ""); err != nil || final {
 		t.Fatal("requested progress refused")
 	}
 	for _, raw := range []string{
@@ -51,12 +51,12 @@ func TestNotificationsMustMatchExplicitRequestProgress(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1,"error":{"Code":-1,"message":"ambiguous"}}`,
 		`{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","content":[],"task":{}}}`,
 	} {
-		if _, _, err := response([]byte(raw), expected, nil, 4096); err == nil {
+		if _, _, err := response([]byte(raw), expected, nil, 4096, ""); err == nil {
 			t.Fatal("unsolicited or ambiguous response accepted")
 		}
 	}
 	expected.progress = nil
-	if _, _, err := response([]byte(good), expected, nil, 4096); err == nil {
+	if _, _, err := response([]byte(good), expected, nil, 4096, ""); err == nil {
 		t.Fatal("unrequested progress forwarded")
 	}
 }

@@ -86,11 +86,16 @@ func rpcEvent(block []byte) []byte {
 }
 
 // relayEvents forwards validated request-scoped messages and stops after one final response.
-func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, expected request, allowed map[string]bool, maxBytes int64, maxFrame int) (bool, error) {
+func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, expected request, allowed map[string]bool, maxBytes int64, maxFrame int, credential string) (bool, error) {
 	r := eventReader{reader: bufio.NewReaderSize(input, 32<<10), remaining: maxBytes, maxFrame: maxFrame}
 	started := false
 	lastProgress := -1.0
+	remaining, frames := maxBytes, 0
 	for {
+		frames++
+		if frames > 4096 {
+			return started, errors.New("MCP stream exceeds its frame count")
+		}
 		block, err := r.next()
 		if err != nil {
 			if ctx.Err() != nil {
@@ -104,10 +109,15 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 		if data == nil {
 			wire = []byte(": keepalive\n\n")
 		} else {
-			data, final, err = response(data, expected, allowed, maxFrame)
+			data, final, err = response(data, expected, allowed, maxFrame, credential)
 			if err != nil {
 				return started, err
 			}
+			var compact bytes.Buffer
+			if err := json.Compact(&compact, data); err != nil {
+				return started, errors.New("MCP stream data is invalid")
+			}
+			data = compact.Bytes()
 			if !final {
 				var update struct {
 					Params struct {
@@ -122,6 +132,10 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 			}
 			wire = append([]byte("event: message\ndata: "), data...)
 			wire = append(wire, '\n', '\n')
+		}
+		remaining -= int64(len(wire))
+		if remaining < 0 || len(wire) > maxFrame {
+			return started, errors.New("MCP output stream exceeds its bounds")
 		}
 		if ctx.Err() != nil {
 			return started, ctx.Err()

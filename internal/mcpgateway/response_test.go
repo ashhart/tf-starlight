@@ -17,7 +17,7 @@ func TestRepliesMatchTheRequestAndRejectUnsupportedServerMessages(t *testing.T) 
 		`{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","ResultType":"input_required"}}`,
 		`{"jsonrpc":"2.0","id":1,"error":null}`,
 	} {
-		if _, _, err := response([]byte(raw), expected, nil, 1<<20); err == nil {
+		if _, _, err := response([]byte(raw), expected, nil, 1<<20, ""); err == nil {
 			t.Fatal("unqualified reply passed")
 		}
 	}
@@ -25,7 +25,7 @@ func TestRepliesMatchTheRequestAndRejectUnsupportedServerMessages(t *testing.T) 
 		`{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","content":[{"type":"text","text":"ok"}]}}`,
 		`{"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"invalid input"}}`,
 	} {
-		if _, final, err := response([]byte(raw), expected, nil, 1<<20); err != nil || !final {
+		if _, final, err := response([]byte(raw), expected, nil, 1<<20, ""); err != nil || !final {
 			t.Fatalf("valid final reply refused: %v", err)
 		}
 	}
@@ -35,7 +35,7 @@ func TestToolDiscoveryFiltersAuthorityAndDisablesPublicCaching(t *testing.T) {
 	expected := request{ID: json.RawMessage(`1`), Method: "tools/list"}
 	raw := `{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","cacheScope":"public","ttlMs":60000,"tools":[` +
 		`{"name":"private","inputSchema":{}},{"name":"echo","inputSchema":{"type":"object"}},{"name":"alpha","inputSchema":{}}]}}`
-	got, final, err := response([]byte(raw), expected, map[string]bool{"echo": true, "alpha": true}, 1<<20)
+	got, final, err := response([]byte(raw), expected, map[string]bool{"echo": true, "alpha": true}, 1<<20, "")
 	if err != nil || !final || strings.Contains(string(got), `"name":"private"`) || !strings.Contains(string(got), `"cacheScope":"private"`) || !strings.Contains(string(got), `"ttlMs":0`) {
 		t.Fatalf("authority or cache filtering failed: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestToolDiscoveryFiltersAuthorityAndDisablesPublicCaching(t *testing.T) {
 		`[{"name":"echo","inputSchema":{}},{"name":"echo","inputSchema":{}}]`,
 	} {
 		raw := `{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","tools":` + tools + `}}`
-		if _, _, err := response([]byte(raw), expected, map[string]bool{"echo": true}, 1<<20); err == nil {
+		if _, _, err := response([]byte(raw), expected, map[string]bool{"echo": true}, 1<<20, ""); err == nil {
 			t.Fatal("ambiguous tool contract passed")
 		}
 	}

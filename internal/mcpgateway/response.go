@@ -9,9 +9,12 @@ import (
 )
 
 // response validates one upstream reply and filters tool discovery to the configured authority.
-func response(raw []byte, expected request, allowed map[string]bool, maxBytes int) ([]byte, bool, error) {
+func response(raw []byte, expected request, allowed map[string]bool, maxBytes int, credential string) ([]byte, bool, error) {
 	if checkJSONLimit(raw, maxBytes) != nil {
 		return nil, false, errors.New("MCP upstream returned invalid JSON")
+	}
+	if reflectsCredential(raw, credential) {
+		return nil, false, errors.New("MCP upstream response contains a protected credential")
 	}
 	var message map[string]json.RawMessage
 	if json.Unmarshal(raw, &message) != nil || message == nil {

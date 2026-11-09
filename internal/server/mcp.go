@@ -86,16 +86,20 @@ func (t *Starlight) buildMCP(proxies *httpx.Proxies) error {
 		if policies.Offline(ctx) {
 			return nil, http.StatusServiceUnavailable
 		}
-		if policy.SecretsGuard != "off" && mcpHasCredentials(r, raw) && (policy.SecretsGuard == "block" || !cfg.Internal) {
+		if policy.SecretsGuard != "off" && mcpHasCredentials(r, raw) {
 			return nil, http.StatusForbidden
 		}
 		return caller.P, 0
 	}
 	record := func(ctx context.Context, e mcpgateway.Event) error {
-		return audit.Log(ctx, t.Pool, audit.Event{ActorType: string(e.Actor.Type), ActorID: e.Actor.ID,
-			Action: "mcp." + e.Phase, TargetType: "project", TargetID: cfg.ProjectID, RequestID: httpx.RequestID(ctx),
-			Outcome: e.Outcome, Details: map[string]any{"key_id": e.Actor.KeyID, "method": e.Method, "tool": e.Tool,
-				"dispatch_possible": e.DispatchPossible, "elapsed_ms": e.ElapsedMS}})
+		event := audit.Event{ActorType: "system", ActorID: "starlight", Action: "mcp." + e.Phase, TargetType: "project", TargetID: cfg.ProjectID,
+			RequestID: httpx.RequestID(ctx), Outcome: e.Outcome, Details: map[string]any{"attempt_id": e.AttemptID, "method": e.Method, "tool": e.Tool,
+				"status": e.Status, "dispatch_possible": e.DispatchPossible, "elapsed_ms": e.ElapsedMS}}
+		if e.Actor != nil {
+			event.ActorType, event.ActorID = string(e.Actor.Type), e.Actor.ID
+			event.Details["key_id"] = e.Actor.KeyID
+		}
+		return audit.Log(ctx, t.Pool, event)
 	}
 	var err error
 	t.MCP, err = mcpgateway.New(mcpgateway.Options{Config: cfg, PublicURL: t.Config.PublicURL,

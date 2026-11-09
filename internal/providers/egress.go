@@ -30,10 +30,22 @@ type Egress struct {
 
 // NewEgress builds the client; proxies come from HTTPS_PROXY and NO_PROXY as usual.
 func NewEgress() *Egress {
-	e := &Egress{hosts: map[string]bool{}, private: map[string]bool{}, resolver: net.DefaultResolver, proxies: proxyHosts()}
+	return newEgress(true)
+}
+
+// NewDirectEgress uses the same address and redirect guards without reading proxy environment variables.
+func NewDirectEgress() *Egress { return newEgress(false) }
+
+func newEgress(useProxy bool) *Egress {
+	e := &Egress{hosts: map[string]bool{}, private: map[string]bool{}, resolver: net.DefaultResolver, proxies: map[string]bool{}}
+	var proxy func(*http.Request) (*url.URL, error)
+	if useProxy {
+		e.proxies = proxyHosts()
+		proxy = http.ProxyFromEnvironment
+	}
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second, ControlContext: e.control}
 	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
+		Proxy:                 proxy,
 		DialContext:           dialer.DialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          256,

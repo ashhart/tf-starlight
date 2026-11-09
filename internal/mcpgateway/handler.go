@@ -11,10 +11,13 @@ import (
 
 	"github.com/ashhart/tf-starlight/internal/config"
 	"github.com/ashhart/tf-starlight/internal/identity/principal"
+	"github.com/ashhart/tf-starlight/internal/ids"
 )
 
 // Event accounts for tool transport separately from inference tokens, without arguments or results.
 type Event struct {
+	AttemptID        string
+	Status           int
 	Actor            *principal.Principal
 	Method           string
 	Tool             string
@@ -24,11 +27,12 @@ type Event struct {
 	ElapsedMS        int64
 }
 
-// Options supplies installation policy and durable accounting; neither callback is optional.
+// Options supplies required installation policy, authorization and durable accounting.
 type Options struct {
 	Config    config.MCP
 	PublicURL string
 	Offline   func() bool
+	// Authorize checks a nil body before capacity, then a parsed body before dispatch.
 	Authorize func(context.Context, *http.Request, []byte) (*principal.Principal, int)
 	Record    func(context.Context, Event) error
 	Log       *slog.Logger
@@ -78,23 +82,8 @@ func (h *Handler) Close() { h.upstream.HTTP.CloseIdleConnections() }
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	if origins := r.Header.Values("Origin"); len(origins) != 0 && (len(origins) != 1 || origins[0] != h.origin) {
-		writeFailure(w, nil, &failure{403, -32600, "Origin is not permitted"})
-		return
-	}
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeFailure(w, nil, &failure{405, -32600, "Use POST"})
-		return
-	}
-	select {
-	case h.slots <- struct{}{}:
-		defer func() { <-h.slots }()
-	default:
-		w.Header().Set("Retry-After", "1")
-		writeFailure(w, nil, &failure{429, -32000, "Tool gateway is at capacity"})
-		return
-	}
+	event := Event{AttemptID: ids.New(), Method: "unknown"}
+	w.Header().Set("X-Starlight-MCP-Attempt-ID", event.AttemptID)
 	deadline := time.Now().Add(h.options.Config.Timeout.Duration)
 	rc := http.NewResponseController(w)
 	_ = rc.SetReadDeadline(deadline)
@@ -108,37 +97,68 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithDeadline(r.Context(), deadline)
 	defer cancel()
 	r = r.WithContext(ctx)
-	raw, err := readBounded(r.Body, 64<<10)
-	if err != nil {
-		writeFailure(w, nil, &failure{413, -32600, "Request body is incomplete or exceeds its bound"})
+	if origins := r.Header.Values("Origin"); len(origins) != 0 && (len(origins) != 1 || origins[0] != h.origin) {
+		h.reject(w, r, nil, &failure{403, -32600, "Origin is not permitted"}, event)
 		return
 	}
-	req, problem := parseRequest(r.Header, raw)
-	if problem != nil {
-		writeFailure(w, req.ID, problem, r.Header.Get("MCP-Protocol-Version"))
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.reject(w, r, nil, &failure{405, -32600, "Use POST"}, event)
 		return
 	}
-	actor, status := h.options.Authorize(ctx, r, raw)
+	actor, status := h.options.Authorize(ctx, r, nil)
 	if status != 0 || actor == nil {
 		if status == 0 {
 			status = http.StatusForbidden
 		}
-		writeFailure(w, req.ID, &failure{status, -32000, "Tool authority is unavailable or denied"})
+		h.reject(w, r, nil, &failure{status, -32000, "Tool authority is unavailable or denied"}, event)
 		return
 	}
+	event.Actor = actor
+	select {
+	case h.slots <- struct{}{}:
+		defer func() { <-h.slots }()
+	default:
+		w.Header().Set("Retry-After", "1")
+		h.reject(w, r, nil, &failure{429, -32000, "Tool gateway is at capacity"}, event)
+		return
+	}
+	raw, err := readBounded(r.Body, 64<<10)
+	if err != nil {
+		h.reject(w, r, nil, &failure{413, -32600, "Request body is incomplete or exceeds its bound"}, event)
+		return
+	}
+	req, problem := parseRequest(r.Header, raw)
+	if problem != nil {
+		h.reject(w, r, req.ID, problem, event)
+		return
+	}
+	event.Method = req.Method
+	if h.allowed[req.name] {
+		event.Tool = req.name
+	}
+	actor, status = h.options.Authorize(ctx, r, raw)
+	if status != 0 || actor == nil {
+		if status == 0 {
+			status = http.StatusForbidden
+		}
+		h.reject(w, r, req.ID, &failure{status, -32000, "Tool authority is unavailable or denied"}, event)
+		return
+	}
+	event.Actor = actor
 	if req.Method == "tools/call" && !h.allowed[req.name] {
-		writeFailure(w, req.ID, &failure{403, -32602, "Tool is not permitted"})
+		h.reject(w, r, req.ID, &failure{403, -32602, "Tool is not permitted"}, event)
 		return
 	}
 	if req.Method == "server/discover" {
 		writeDiscovery(w, req.ID)
 		return
 	}
-	h.forward(w, r, req, actor, raw)
+	h.forward(w, r, req, event, raw)
 }
 
-func (h *Handler) forward(w http.ResponseWriter, r *http.Request, req request, actor *principal.Principal, raw []byte) {
-	event := Event{Actor: actor, Method: req.Method, Tool: req.name, Phase: "begin", Outcome: "authorized"}
+func (h *Handler) forward(w http.ResponseWriter, r *http.Request, req request, event Event, raw []byte) {
+	event.Phase, event.Outcome = "begin", "authorized"
 	if err := h.options.Record(r.Context(), event); err != nil {
 		writeFailure(w, req.ID, &failure{503, -32000, "Tool accounting is unavailable"})
 		return
@@ -162,7 +182,7 @@ func (h *Handler) forward(w http.ResponseWriter, r *http.Request, req request, a
 	}
 	kind, _, err := mime.ParseMediaType(x.response.Header.Get("Content-Type"))
 	if err == nil && kind == "text/event-stream" {
-		started, relayErr := relayEvents(r.Context(), w, x.response.Body, req, h.allowed, h.upstream.MaxBytes, h.upstream.MaxFrame)
+		started, relayErr := relayEvents(r.Context(), w, x.response.Body, req, h.allowed, h.upstream.MaxBytes, h.upstream.MaxFrame, h.upstream.Bearer)
 		if relayErr != nil {
 			if !started {
 				writeFailure(w, req.ID, &failure{502, -32000, "Tool upstream stream did not complete"})
@@ -171,7 +191,7 @@ func (h *Handler) forward(w http.ResponseWriter, r *http.Request, req request, a
 		}
 	} else if err == nil && kind == "application/json" {
 		body, readErr := readBounded(x.response.Body, h.upstream.MaxBytes)
-		validated, final, validateErr := response(body, req, h.allowed, int(h.upstream.MaxBytes))
+		validated, final, validateErr := response(body, req, h.allowed, int(h.upstream.MaxBytes), h.upstream.Bearer)
 		if readErr != nil || validateErr != nil || !final {
 			writeFailure(w, req.ID, &failure{502, -32000, "Tool upstream returned an invalid final response"})
 			return

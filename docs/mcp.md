@@ -63,13 +63,21 @@ This is a preconfigured API-key profile. It does not implement the MCP OAuth
 discovery/delegation recommendation or claim compatibility with generic OAuth MCP
 clients. See the [authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization).
 
-Authority, project classification and offline state are re-read for each request.
+Bearer authority is checked before taking a tool slot or reading its body. Authority,
+project classification and offline state are checked again after parsing for each request.
 The strictest of project classification, key floor and requested classification
-must fit `max_class`. Project secret screening applies to JSON and decoded MCP parameter headers. Isolated projects
-cannot use external servers. `internal: true` is an explicit operator grant for
+must fit `max_class`. Project secret screening applies to JSON and decoded MCP
+parameter headers. Both `local` and `block` modes refuse detected credentials before
+tool dispatch, including internal tool servers. Only an explicit project guard mode
+of `off` disables this screening. Isolated projects cannot use external servers. `internal: true` is an explicit operator grant for
 the fixed host to resolve to internal addresses and, if needed, use HTTP; it is not
-inferred from the URL. The existing guarded egress client refuses redirects and
-unapproved/private addresses. Offline mode refuses all tool-server dispatch,
+inferred from the URL. MCP uses the direct variant of the existing guarded egress
+client, ignoring HTTP_PROXY, HTTPS_PROXY, ALL_PROXY and NO_PROXY in either case.
+It refuses redirects and unapproved/private addresses. Existing frontier-provider
+clients keep their configured environment-proxy behavior. The shared guards are in
+[providers/egress.go](../internal/providers/egress.go): NewDirectEgress disables proxy
+lookup, CheckRedirect stops redirects and Egress.control checks resolved addresses.
+Offline mode refuses all tool-server dispatch,
 including internal servers. Present Origin headers must match the configured
 public origin. The gateway never forwards caller Authorization, cookies or
 idempotency keys. A key revocation prevents subsequent requests; an already
@@ -77,13 +85,16 @@ dispatched tool operation may continue independently of its connection.
 
 ## Bounds and execution outcomes
 
-Requests are limited to 64 KiB, JSON depth 32 and 8192 values. Replies are limited to
-8MiB; individual SSE events are limited to 1 MiB. All bytes read before the final response, including comments,
-count against the stream bound. Timeout must be 1s through1m and covers request-body
-reading, policy checks, upstream exchange and client writes. Each instance permits
-1 through 64 concurrent requests and queues none. Excess requests receive 429.
-These are per-instance limits, not a shared fleet tool budget. The same key's
-inference-token limits do not price or meter tool work.
+Requests are limited to 64 KiB and replies to 8 MiB. Both directions use JSON depth 32
+and 8192-value limits. Individual incoming and encoded outgoing SSE events are
+limited to 1 MiB, with at most 4096 frames including keepalives. Incoming wire bytes
+and encoded outgoing bytes each have a separate 8 MiB total bound, including
+comments and frame overhead. Multi-line JSON data is compacted into one data line
+without changing JSON values. Timeout must be 1s through 1m and covers authorization,
+request-body reading, policy checks, upstream exchange and client writes. Each
+instance permits 1 through 64 concurrent authorized requests and queues none.
+Excess authorized requests receive 429. These are per-instance limits, not a shared
+fleet tool budget. Inference-token limits do not price or meter tool work.
 
 The gateway makes one application-level upstream request and never retries,
 redirects, resumes or replays it. Disconnect cancels/closes the upstream exchange.
@@ -91,18 +102,30 @@ Cancellation cannot undo a side effect that the tool already performed. A timeou
 connection failure, truncated stream or lost response can leave execution unknown.
 If a stream has started, failure closes it without inventing a final result. A
 client reconnecting with another POST starts a new attempt, even with the same RPC
-ID. The route offers no exactly-once tool execution or idempotency service.
+ID. A client retry after a 502 can run the tool twice. The route offers no
+exactly-once tool execution or idempotency service.
 
 ## Accounting and qualification
 
-A durable `mcp.begin` audit event is required before forwarding. A separate
+Every request receives a generated attempt id, independent of middleware and the
+client RPC id, echoed in X-Starlight-MCP-Attempt-ID. A durable `mcp.begin` event
+with that id is required before forwarding. audit.Log completes its database
+transaction before returning; a commit error prevents dispatch. A separate
 `mcp.end` event records the transport outcome, elapsed milliseconds and whether
 dispatch was possible. The latter flag is conservative: obtaining a connection
 can establish possibility without proving that the tool executed. `response_complete`
 means a valid final RPC response was relayed, including a tool or RPC error; it does
 not mean the tool succeeded. Audit fields include principal/key/project IDs and
-configured tool name, never tool arguments, results, bearer values or endpoint URLs.
+configured tool name and attempt id, never tool arguments, results, bearer values
+or endpoint URLs. Bad credentials, ungranted tools and policy refusals create
+content-free `mcp.deny` records with a status and attempt id. Anonymous refusals
+carry no claimed user identity. Denial recording has a 1s bound; an unavailable
+audit database still refuses the request and logs a fixed accounting error.
 Inference `usage_events`, token settlements and budgets receive no synthetic rows.
+
+JSON replies and SSE messages are also refused if a decoded JSON string contains
+the configured upstream bearer, including JSON-escaped spellings. This prevents
+literal credential reflection; it does not identify every possible encoding.
 
 Completion accounting has a separate 2s cleanup bound and can fail after a response
 or process crash. Such a failure emits a fixed server error message. A begin event
