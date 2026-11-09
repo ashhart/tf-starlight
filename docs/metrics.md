@@ -227,6 +227,22 @@ for fields, sampling, local-clock boundaries and export limits.
 
 ## Alerts and dashboard
 
+With `gateway.routing_shadow` enabled, `starlight_routing_shadow_token_error_tokens` records the absolute difference
+between a prompt estimate or output reservation and the actual reported count. Labels contain only catalogue `model`,
+`phase` and `direction`, where `under` means the estimate was below the reported count. Explicit equal counts record zero.
+The gateway records only successful local generation with successful settlement and one complete explicit usage pair.
+Chat/completions require `prompt_tokens` and `completion_tokens`; Responses require completed input/output counts.
+Missing, null, ambiguous, invalid, failed or unsupported observations produce no sample. Cloud, Anthropic, embeddings
+and token-count endpoints are outside this initial envelope. Disabled shadow mode does not parse calibration fields.
+Duplicate or case-fold-colliding keys, contradictory usage locations, malformed frames and explicit stream errors disqualify the request for
+token calibration even if a later frame supplies usage. Diagnostic parsing stops above 1 MiB, 4,096 values/keys or
+64 nested levels; exceeding a limit leaves the observation unknown. These checks do not alter ordinary metering.
+
+These are aggregate token-count diagnostics across served revisions, not billing records, a fitted predictor, a memory
+demand model or a calibration guarantee. Prompt counts include any reported cached tokens. The output estimate is a
+reservation cap, so a short actual reply can produce large overestimation. Storage, pinned/device bytes, actual prefill
+work and future demand cannot be inferred from this histogram. Admission limits and live routing remain unchanged.
+
 `deploy/prometheus/rules/starlight.yaml` alerts on an instance down, no controller leader, stale or pending nodes, failed or
 lost replicas, a deep queue, a server-error ratio above 5%, a surge in admission refusals, capacity exhaustion,
 `no_route` refusals, high queue waits, a surge in invalid credentials, and a certificate within 14 days of expiry. `deploy/grafana/dashboards/starlight.json` charts

@@ -29,9 +29,11 @@ type anthropicUsage struct {
 
 // meter accumulates usage from a response body or its stream events.
 type meter struct {
-	protocol   string
-	usage      admission.Usage
-	responseID string
+	protocol          string
+	usage             admission.Usage
+	responseID        string
+	calibrateTokens   bool
+	calibrationFailed bool
 }
 
 func (m *meter) fromOpenAI(u *openAIUsage) {
@@ -61,6 +63,9 @@ func (m *meter) fromAnthropic(u *anthropicUsage, final bool) {
 
 // body meters a complete JSON response.
 func (m *meter) body(b []byte) {
+	if m.calibrateTokens {
+		m.usage.TokenCountsReported = false
+	}
 	switch m.protocol {
 	case providers.Messages:
 		var r struct {
@@ -78,15 +83,21 @@ func (m *meter) body(b []byte) {
 		}
 		if json.Unmarshal(b, &r) == nil {
 			m.fromOpenAI(r.Usage)
+			m.observeTokenCounts(b, false)
 			if m.protocol == providers.Responses {
 				m.responseID = r.ID
 			}
+		} else {
+			m.failTokenCalibration()
 		}
 	}
 }
 
 // event meters one stream payload and reports whether it is an OpenAI usage-only chunk.
 func (m *meter) event(data []byte) (usageOnly bool) {
+	if m.calibrateTokens {
+		m.usage.TokenCountsReported = false
+	}
 	switch m.protocol {
 	case providers.Messages:
 		var e struct {
@@ -97,6 +108,7 @@ func (m *meter) event(data []byte) (usageOnly bool) {
 			Usage *anthropicUsage `json:"usage"`
 		}
 		if json.Unmarshal(data, &e) != nil {
+			m.failTokenCalibration()
 			return false
 		}
 		switch e.Type {
@@ -114,6 +126,7 @@ func (m *meter) event(data []byte) (usageOnly bool) {
 			} `json:"response"`
 		}
 		if json.Unmarshal(data, &e) != nil {
+			m.failTokenCalibration()
 			return false
 		}
 		switch e.Type {
@@ -122,15 +135,18 @@ func (m *meter) event(data []byte) (usageOnly bool) {
 		case "response.completed", "response.incomplete", "response.failed":
 			m.fromOpenAI(e.Response.Usage)
 		}
+		m.observeTokenCounts(data, true)
 	default:
 		var c struct {
 			Choices []json.RawMessage `json:"choices"`
 			Usage   *openAIUsage      `json:"usage"`
 		}
 		if json.Unmarshal(data, &c) != nil {
+			m.failTokenCalibration()
 			return false
 		}
 		m.fromOpenAI(c.Usage)
+		m.observeTokenCounts(data, true)
 		return c.Usage != nil && c.Choices != nil && len(c.Choices) == 0
 	}
 	return false

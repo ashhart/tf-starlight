@@ -31,8 +31,12 @@ type relayed struct {
 
 // relay copies an upstream response to the client and meters usage; stripUsage hides an unrequested usage chunk.
 func relay(ctx context.Context, w http.ResponseWriter, resp *http.Response, protocol string, stripUsage bool, d httpx.Dialect, start time.Time, observe bool) relayed {
+	return relayWithCalibration(ctx, w, resp, protocol, stripUsage, d, start, observe, false)
+}
+
+func relayWithCalibration(ctx context.Context, w http.ResponseWriter, resp *http.Response, protocol string, stripUsage bool, d httpx.Dialect, start time.Time, observe, calibrateTokens bool) relayed {
 	out := relayed{status: resp.StatusCode, outcome: "ok"}
-	m := &meter{protocol: protocol}
+	m := &meter{protocol: protocol, calibrateTokens: calibrateTokens}
 	ct := resp.Header.Get("Content-Type")
 	w.Header().Set("Content-Type", ct)
 	if strings.HasPrefix(ct, "text/event-stream") && resp.StatusCode == http.StatusOK {

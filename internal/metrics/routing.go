@@ -10,14 +10,16 @@ import (
 )
 
 type routeMetrics struct {
-	decisions *prometheus.CounterVec
-	scores    *prometheus.HistogramVec
-	errors    *prometheus.HistogramVec
-	outcomes  *prometheus.CounterVec
+	decisions   *prometheus.CounterVec
+	scores      *prometheus.HistogramVec
+	errors      *prometheus.HistogramVec
+	outcomes    *prometheus.CounterVec
+	tokenErrors *prometheus.HistogramVec
 }
 
 func newRouteMetrics(r *prometheus.Registry) *routeMetrics {
 	s := &routeMetrics{
+		tokenErrors: newTokenEstimateMetric(),
 		decisions: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "starlight_routing_shadow_decisions_total",
 			Help: "Advisory comparisons for actual committed leases; live routing is unchanged."}, []string{"model", "reason", "agreement"}),
 		scores: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "starlight_routing_shadow_effort_seconds",
@@ -28,7 +30,7 @@ func newRouteMetrics(r *prometheus.Registry) *routeMetrics {
 		outcomes: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "starlight_routing_shadow_results_total",
 			Help: "Which actual-route completions can qualify prediction-error observations."}, []string{"model", "result"}),
 	}
-	r.MustRegister(s.decisions, s.scores, s.errors, s.outcomes)
+	r.MustRegister(s.decisions, s.scores, s.errors, s.outcomes, s.tokenErrors)
 	return s
 }
 
