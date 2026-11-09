@@ -29,6 +29,7 @@ func TestRoutingShadowOverhead(t *testing.T) {
 			a := f.admitter()
 			ctx := context.Background()
 			chosen, total := "", 0
+			var disabled, enabledMedians []float64
 			for trial, enabled := range []bool{false, true, true, false} {
 				shadowProfileState(t, f, scenario.state)
 				var admitTimes, cycleTimes []float64
@@ -81,13 +82,22 @@ func TestRoutingShadowOverhead(t *testing.T) {
 						cycleTimes = append(cycleTimes, time.Since(start).Seconds())
 					}
 				}
+				median := shadowProfilePercentile(admitTimes, 50)
+				if enabled {
+					enabledMedians = append(enabledMedians, median)
+				} else {
+					disabled = append(disabled, median)
+				}
 				shadowProfileReport(t, map[string]any{"basis": "real PostgreSQL sequential admission; no engine or production SLO",
 					"candidates": scenario.count, "observation": scenario.state, "enabled": enabled, "trial": trial,
 					"warmup": warmup, "samples": samples, "occupied_slots_per_replica": 1,
-					"admit_p50_seconds": shadowProfilePercentile(admitTimes, 50),
+					"admit_p50_seconds": median,
 					"admit_p95_seconds": shadowProfilePercentile(admitTimes, 95),
 					"cycle_p50_seconds": shadowProfilePercentile(cycleTimes, 50),
 					"cycle_p95_seconds": shadowProfilePercentile(cycleTimes, 95)})
+			}
+			if scenario.count > routing.MaxShadowCandidates && slices.Min(enabledMedians) > 2*slices.Max(disabled) {
+				t.Errorf("both unavailable-comparison trials exceed twice the slower disabled control: on=%v off=%v", enabledMedians, disabled)
 			}
 			var events, used, reserved, leases int
 			err := f.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM usage_events),used,reserved,
