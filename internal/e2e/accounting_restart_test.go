@@ -38,7 +38,8 @@ func TestTerminalAccountingSurvivesDatabaseAndWorkerRestart(t *testing.T) {
 	exec(t, pool, `INSERT INTO counters(key,window_start,reserved) VALUES($1,date_trunc('day',now()),100)`, key)
 	exec(t, pool, `INSERT INTO leases(id,request_id,gateway_id,model_id,replica_id,scopes,budget_keys,reserved_tokens,
 		priority,principal_type,principal_id,project_id,deadline,heartbeat_at)
-		VALUES($1,'restart-request',$2,$3,$4,'{}',ARRAY[$5],100,'standard','user',$6,$7,now(),now()-interval '2 minutes')`,
+		VALUES($1,'restart-request',$2,$3,$4,'{}',ARRAY[$5 || '|' ||
+		(SELECT window_start::text FROM counters WHERE key=$5)],100,'standard','user',$6,$7,now(),now()-interval '2 minutes')`,
 		lease, gateway, model, replica, key, principal, project)
 	if n, err := admission.Reap(ctx, pool); err != nil || n != 1 {
 		t.Fatalf("reaping before crash: %d, %v", n, err)
@@ -51,6 +52,10 @@ func TestTerminalAccountingSurvivesDatabaseAndWorkerRestart(t *testing.T) {
 	var state string
 	if err := pool.QueryRow(ctx, "SELECT starlight_settle_result($1)", report).Scan(&state); err != nil || state != "late" {
 		t.Fatalf("acknowledging late observation: %s, %v", state, err)
+	}
+	var charged, reserved int64
+	if err := pool.QueryRow(ctx, "SELECT used,reserved FROM counters WHERE key=$1", key).Scan(&charged, &reserved); err != nil || charged != 100 || reserved != 0 {
+		t.Fatalf("fixture charge before crash: used=%d reserved=%d: %v", charged, reserved, err)
 	}
 	pool.Close()
 	pair.stopPrimary()
