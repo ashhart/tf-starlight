@@ -1,11 +1,14 @@
 package controlclient
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -62,6 +65,7 @@ func TestStatsMetadataIsNegotiatedWithoutChangingTheOfferedReport(t *testing.T) 
 }
 
 func TestMixedVersionListenersFallBackToLegacyInsteadOfLosingTheReport(t *testing.T) {
+	var diagnostic bytes.Buffer
 	var mu sync.Mutex
 	var got []bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +94,7 @@ func TestMixedVersionListenersFallBackToLegacyInsteadOfLosingTheReport(t *testin
 	}))
 	defer server.Close()
 	u, _ := url.Parse(server.URL)
-	c := &Client{HTTP: server.Client(), Base: u}
+	c := &Client{HTTP: server.Client(), Base: u, Logger: slog.New(slog.NewTextHandler(&diagnostic, nil))}
 	if _, err := c.Sync(context.Background(), wire.SyncRequest{}); err != nil {
 		t.Fatal(err)
 	}
@@ -102,11 +106,20 @@ func TestMixedVersionListenersFallBackToLegacyInsteadOfLosingTheReport(t *testin
 		t.Fatal(err)
 	}
 	mu.Lock()
-	defer mu.Unlock()
 	if len(got) != 3 || !got[0] || got[1] || got[2] {
 		t.Fatalf("mixed-version reports %v", got)
 	}
+	mu.Unlock()
 	if report.Replicas[0].Observation == nil {
 		t.Fatal("caller observation was mutated during fallback")
+	}
+	if _, err := c.Sync(context.Background(), wire.SyncRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Stats(context.Background(), report); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(diagnostic.String(), "using legacy stats") != 1 || strings.Contains(diagnostic.String(), server.URL) {
+		t.Fatal("downgrade warning missing, repeated or contains an endpoint")
 	}
 }

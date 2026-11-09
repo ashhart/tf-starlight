@@ -7,12 +7,16 @@ import (
 )
 
 func legacySum(s *sample, family string) (float64, bool) {
-	values, ok := s.fam[family]
 	total := 0.0
-	for _, v := range values {
+	known := false
+	for _, v := range s.fam[family] {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			continue
+		}
 		total += v
+		known = true
 	}
-	return total, ok
+	return total, known
 }
 
 func legacyNonnegative(v float64) float64 {
@@ -52,6 +56,9 @@ func legacyStats(id string, prev, cur *sample, inFlight int) wire.ReplicaStats {
 	waiting, _ := legacySum(cur, famWaiting)
 	kv := 0.0
 	for _, value := range cur.fam[famKV] {
+		if math.IsNaN(value) || math.IsInf(value, 0) {
+			continue
+		}
 		kv = max(kv, value)
 	}
 	return wire.ReplicaStats{ReplicaID: id, TokensPerSecond: legacyRate(prev, cur, famGenTotal, famGenRunning),

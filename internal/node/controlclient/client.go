@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"sync/atomic"
 
 	"github.com/ashhart/tf-starlight/internal/control/wire"
@@ -41,7 +43,9 @@ func Revoked(err error) bool {
 type Client struct {
 	HTTP             *http.Client
 	Base             *url.URL
+	Logger           *slog.Logger
 	observationStats atomic.Bool
+	legacyWarning    sync.Once
 }
 
 // Enroll exchanges the enrolment token and CSR for an identity.
@@ -72,6 +76,13 @@ func (c *Client) Stats(ctx context.Context, rep wire.StatsReport) error {
 		err = c.post(ctx, wire.PathStats, legacyReport(rep), nil)
 		if err == nil {
 			c.observationStats.Store(false)
+			c.legacyWarning.Do(func() {
+				log := c.Logger
+				if log == nil {
+					log = slog.Default()
+				}
+				log.Warn("control server rejected replica observations; using legacy stats", "reason", "mixed_version")
+			})
 		}
 	}
 	return err

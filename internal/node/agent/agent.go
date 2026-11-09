@@ -107,6 +107,7 @@ func Run(ctx context.Context, cfg Config) error {
 	if err != nil {
 		return err
 	}
+	client.Logger = log
 	addr := cfg.Advertise
 	if addr == "" {
 		addr = advertise(ln.Addr())

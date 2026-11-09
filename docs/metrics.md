@@ -168,7 +168,9 @@ with legacy fields and keeps legacy mode until the next successful capability sy
 An upgraded server preserves reports without observation metadata as legacy values, with receipt-time freshness.
 The console marks these reports as legacy, and its JSON carries `legacy: true`; their zeros cannot distinguish idle
 work from first samples or resets. They are not qualified work samples in the exporter. Upgrade nodes to restore
-qualified observations. This negotiated reporting, storage and dashboard behavior applies even when the exporter flag
+qualified observations. JSON consumers must check `legacy` before interpreting a complete aggregate as measured work:
+legacy zeros count as complete field coverage. A mixed-version downgrade emits one content-free warning per control client.
+This negotiated reporting, storage and dashboard behavior applies even when the exporter flag
 is false; the flag selects only the optional scrape-time collector.
 The existing `replicas.live` JSON stores the latest observation; no schema migration or extra retention table is needed.
 
