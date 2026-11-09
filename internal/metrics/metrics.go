@@ -31,6 +31,7 @@ type Set struct {
 	Nodes       *prometheus.GaugeVec
 	LeaderEpoch prometheus.Gauge
 	CertExpiry  *prometheus.GaugeVec
+	shadow      *routeMetrics
 }
 
 var latency = []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 60, 120, 300, 600}
@@ -77,6 +78,7 @@ func New() *Set {
 	r.MustRegister(s.Requests, s.Duration, s.FirstByte, s.StreamData, s.ModelOutput, s.ModelFlush,
 		s.QueueWait, s.Tokens, s.Rejections, s.InFlight, s.QueueDepth,
 		s.Replicas, s.Nodes, s.LeaderEpoch, s.CertExpiry)
+	s.shadow = newRouteMetrics(r)
 	return s
 }
 

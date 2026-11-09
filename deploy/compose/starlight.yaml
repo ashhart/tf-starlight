@@ -15,6 +15,7 @@ gateway:
   queue_standard: 2m
   queue_batch: 15m
   default_max_tokens: 4096
+  routing_shadow: false
 log:
   level: info
   format: json

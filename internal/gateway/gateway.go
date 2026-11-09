@@ -25,6 +25,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/levels"
 	"github.com/ashhart/tf-starlight/internal/metrics"
 	"github.com/ashhart/tf-starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/routing"
 )
 
 // Gateway serves /v1 inference under authentication, policy, admission and accounting.
@@ -259,6 +260,9 @@ func (g *Gateway) admissionRequest(ctx context.Context, r *http.Request, c *call
 		Micros: micros, Affinity: c.info.Affinity, QueueUntil: time.Now().Add(wait), RunFor: g.Config.RequestTimeout.Duration, Only: c.req.Only,
 		Isolated: c.project.Isolated,
 		Who:      admission.Who{PrincipalType: string(p.Type), PrincipalID: p.ID, ProjectID: p.ProjectID, Client: c.client}}
+	if g.Config.RoutingShadow {
+		c.req.ShadowWork = &routing.Work{Prompt: c.info.Estimate, Completion: out}
+	}
 	return nil
 }
 

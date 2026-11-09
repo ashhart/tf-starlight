@@ -57,6 +57,12 @@ jobs:
         run: go vet ./...
       - name: lean check
         run: go run ./tools/leancheck .
+      - name: matched controlled routing traces
+        run: |
+          for trace in tools/routing-replay/testdata/*.json; do
+            echo "$trace"
+            go run ./tools/routing-replay -input "$trace"
+          done
       - name: race tests
         run: go test -race -count=1 ./...
       - name: 8,000-user load test

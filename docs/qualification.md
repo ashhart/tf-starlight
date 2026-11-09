@@ -350,3 +350,25 @@ have no Docker, and run the node image on a GPU, which the NVIDIA gate above cov
 
 Commission a review and penetration test of the gateway, identity, node and console surfaces before production use; see
 [security.md](security.md#residual-risks-and-open-review-items).
+
+### Shadow routing qualification
+
+`TestShadowRoutingKeepsAffinityAndOneBudgetEffect` uses real Postgres admission with injected measured-shape samples.
+It requires the same actual affinity choice with the flag off/on, an advisory disagreement on unequal rates, and one
+budget/usage effect per lease. Other admission fixtures cover classification eligibility and missing, stale, malformed,
+oversized or generation-mismatched observations. Pure evaluator cases cover phase-heavy work, outstanding reservations,
+ties, invalid bounds and untracked engine work. Metrics fixtures separate numeric estimates from qualified actual-route
+error samples and keep target/request identities out of labels. The gateway fixture exercises the config flag through
+actual serving with an enrolled fake engine. These fixtures establish behavior under declared inputs, not device rates.
+
+`go run ./tools/routing-replay -input tools/routing-replay/testdata/mixed.json` reports matched synthetic policy arms.
+The supplied mixed, unequal-cold, hot-prefix and stale traces declare their assumed rates and cache rules. Positive and
+negative controls must be retained together. They record SLO goodput, p95 latency/queue wait, finite starvation-threshold
+violations and estimation error. The hot-prefix control exposes missing cache credit; the stale control must match the
+baseline with unknown error. See the [tool contract](../tools/routing-replay/README.md) for bounds and definitions.
+
+No live promotion follows from a lower advisory score or synthetic gain. Measure flag-off/on gateway/database overhead,
+then gather matched mixed-length/hot-cold/unequal-device traffic with exact engine/model identity, generation/freshness,
+usage coverage and actual client completion receipts. A reviewed policy change requires a demonstrated device gain
+without a quality or fairness regression and an immediate return to the existing picker. This change leaves policy
+selection and model outputs with the current implementation.

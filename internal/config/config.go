@@ -98,6 +98,7 @@ type Gateway struct {
 	RequestTimeout   Duration `yaml:"request_timeout"`
 	DefaultMaxTokens int      `yaml:"default_max_tokens"`
 	AgeingStep       Duration `yaml:"ageing_step"`
+	RoutingShadow    bool     `yaml:"routing_shadow"`
 }
 
 // MDNS controls LAN advertisement of the public URL.
