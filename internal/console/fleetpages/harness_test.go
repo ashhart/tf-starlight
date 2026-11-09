@@ -86,6 +86,7 @@ func newRig(t *testing.T) *rig {
 	r.exec(`INSERT INTO replicas (id, deployment_id, deployment_revision, node_id, state, slots, epoch, live, live_at) VALUES ($1, $2, 1, $3,
 		'ready', 4, 1, '{"tokens_per_second": 87.5, "prompt_tokens_per_second": 1200, "running": 2, "waiting": 1, "kv_usage": 0.42}', now())`,
 		r.replica, deployment, r.node)
+	r.exec("UPDATE replicas SET live = live || jsonb_build_object('observed_at',now(),'generation',1,'window_seconds',5) WHERE id=$1", r.replica)
 	if err := trust.Bootstrap(ctx, pool, r.keys, "starlight-test"); err != nil {
 		t.Fatal(err)
 	}

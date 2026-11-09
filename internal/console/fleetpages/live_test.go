@@ -64,7 +64,7 @@ func TestStaleStatsAreNotCounted(t *testing.T) {
 	_, body := owner.get("/console/live.json")
 	var snap fleet.Snapshot
 	_ = json.Unmarshal([]byte(body), &snap)
-	if snap.Tiles.TokensPerSecond != 0 || snap.Throughput[60] != 0 {
+	if snap.Tiles.TokensPerSecond != 0 || len(snap.Throughput) != 60 {
 		t.Fatalf("stale stats counted: %+v", snap.Tiles)
 	}
 	for _, n := range snap.Nodes {
@@ -81,5 +81,51 @@ func TestStaleStatsAreNotCounted(t *testing.T) {
 	}
 	if _, page := owner.get("/console/models"); !strings.Contains(page, "pill-unavailable") {
 		t.Fatal("a model whose only node went silent still shows as available")
+	}
+}
+
+func TestUnknownFieldsStayDifferentFromMeasuredIdleInTheConsole(t *testing.T) {
+	r := newRig(t)
+	owner := r.user("owner@example.com", "owner", "")
+	r.exec("UPDATE replicas SET live=jsonb_build_object('observed_at',now(),'generation',1,'running',0),live_at=now() WHERE id=$1", r.replica)
+	_, body := owner.get("/console/live.json")
+	var snap fleet.Snapshot
+	if err := json.Unmarshal([]byte(body), &snap); err != nil {
+		t.Fatal(err)
+	}
+	if snap.Tiles.DecodeKnown || len(snap.Throughput) != 60 {
+		t.Fatal("unknown rate became a live zero point")
+	}
+	var found bool
+	for _, n := range snap.Nodes {
+		if n.ID == r.node {
+			found = true
+			if n.DecodeKnown || !n.RunningKnown || n.WaitingKnown || n.KVKnown || n.Running != 0 {
+				t.Fatalf("unknown and measured idle fields merged: %+v", n)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("node missing")
+	}
+	_, page := owner.get("/console/nodes")
+	if !strings.Contains(page, `data-col="tps">—<`) || !strings.Contains(page, `data-col="rw">0 · —<`) {
+		t.Fatal("console displays unknown fields as idle")
+	}
+	r.exec("UPDATE replicas SET live=live || jsonb_build_object('tokens_per_second',0,'window_seconds',5) WHERE id=$1", r.replica)
+	_, body = owner.get("/console/live.json")
+	if err := json.Unmarshal([]byte(body), &snap); err != nil {
+		t.Fatal(err)
+	}
+	if !snap.Tiles.DecodeKnown || snap.Tiles.TokensPerSecond != 0 || len(snap.Throughput) != 61 {
+		t.Fatal("measured idle rate was not displayed as known")
+	}
+	r.exec("UPDATE replicas SET live=live || jsonb_build_object('observed_at',now()+interval '5 seconds') WHERE id=$1", r.replica)
+	_, body = owner.get("/console/live.json")
+	if err := json.Unmarshal([]byte(body), &snap); err != nil {
+		t.Fatal(err)
+	}
+	if snap.Tiles.DecodeKnown {
+		t.Fatal("future observation displayed as current")
 	}
 }

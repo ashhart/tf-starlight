@@ -10,8 +10,8 @@
 <td>{{.Backend}}<span class="sub">{{.Accelerators}}</span></td>
 <td class="num">{{$p.Bytes .MemoryBytes}}</td>
 <td class="num" data-col="ready">{{.Ready}} / {{.Replicas}}</td>
-<td class="num" data-col="tps">{{if .Fresh}}{{$p.Rate .TokensPerSecond}}{{else}}—{{end}}</td>
-<td class="num" data-col="rw">{{if .Fresh}}{{.Running}} · {{.Waiting}}{{else}}—{{end}}</td>
+<td class="num" data-col="tps">{{if .DecodeKnown}}{{$p.Rate .TokensPerSecond}}{{else}}—{{end}}</td>
+<td class="num" data-col="rw">{{if .RunningKnown}}{{.Running}}{{else}}—{{end}} · {{if .WaitingKnown}}{{.Waiting}}{{else}}—{{end}}</td>
 <td data-col="kv"><meter min="0" max="1" low="0.75" high="0.9" optimum="0" value="{{.KVUsage}}">{{$p.Percent .KVUsage}}</meter></td>
 <td data-col="seen">{{ago .LastSeen}}</td>
 {{if $p.CanControl}}<td><div class="actions">

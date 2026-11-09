@@ -3,10 +3,10 @@
 <header class="dash-head" data-node-id="{{$n.ID}}"><h1>{{$n.Name}} <span data-col="state"><span class="pill pill-{{$n.State}}">{{$n.State}}</span></span></h1><p class="livebadge" role="status"><span class="live-dot" aria-hidden="true"></span><span data-live="updated">Live</span></p></header>
 <p class="small"><a href="/console/nodes">All nodes</a></p>
 <section class="kpis" data-node-id="{{$n.ID}}">
-<article class="kpi"><p class="kpi-label">Generation</p><p class="kpi-value"><span data-col="tps">{{if $n.Live.Fresh}}{{$p.Rate $n.Live.TokensPerSecond}}{{else}}—{{end}}</span><span class="kpi-unit">tok/s</span></p><p class="kpi-sub">prompt {{$p.Rate $n.Live.PromptTokensPerSecond}} tok/s</p></article>
-<article class="kpi"><p class="kpi-label">Running · waiting</p><p class="kpi-value" data-col="rw">{{if $n.Live.Fresh}}{{$n.Live.Running}} · {{$n.Live.Waiting}}{{else}}—{{end}}</p></article>
+<article class="kpi"><p class="kpi-label">Generation</p><p class="kpi-value"><span data-col="tps">{{if $n.Live.DecodeKnown}}{{$p.Rate $n.Live.TokensPerSecond}}{{else}}—{{end}}</span><span class="kpi-unit">tok/s</span></p><p class="kpi-sub">prompt <span data-col="prompt">{{if $n.Live.PromptKnown}}{{$p.Rate $n.Live.PromptTokensPerSecond}}{{else}}—{{end}}</span> tok/s</p></article>
+<article class="kpi"><p class="kpi-label">Running · waiting</p><p class="kpi-value" data-col="rw">{{if $n.Live.RunningKnown}}{{$n.Live.Running}}{{else}}—{{end}} · {{if $n.Live.WaitingKnown}}{{$n.Live.Waiting}}{{else}}—{{end}}</p></article>
 <article class="kpi"><p class="kpi-label">Replicas ready</p><p class="kpi-value" data-col="ready">{{$n.Ready}} / {{$n.Replicas}}</p></article>
-<article class="kpi"><p class="kpi-label">KV cache</p><p class="kpi-value small-value" data-col="kv"><meter min="0" max="1" low="0.75" high="0.9" optimum="0" value="{{$n.Live.KVUsage}}">{{$p.Percent $n.Live.KVUsage}}</meter></p></article>
+<article class="kpi"><p class="kpi-label">KV cache</p><p class="kpi-value small-value" data-col="kv"><span data-kv-unknown{{if $n.Live.KVKnown}} hidden{{end}}>—</span><meter data-kv-meter{{if not $n.Live.KVKnown}} hidden{{end}} min="0" max="1" low="0.75" high="0.9" optimum="0" value="{{$n.Live.KVUsage}}">{{$p.Percent $n.Live.KVUsage}}</meter></p></article>
 <article class="kpi"><p class="kpi-label">Last seen</p><p class="kpi-value small-value" data-col="seen">{{ago $n.LastSeen}}</p><p class="kpi-sub">certificate until {{when $n.CertNotAfter}}</p></article>
 </section>
 <div class="grid2">

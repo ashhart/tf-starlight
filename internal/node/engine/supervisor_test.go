@@ -253,6 +253,9 @@ func TestStatsReportsMeasureThroughput(t *testing.T) {
 	if len(first.Replicas) != 1 || first.Replicas[0].ReplicaID != id || first.Replicas[0].TokensPerSecond != 0 {
 		t.Fatalf("first report must carry the replica without a rate: %+v", first)
 	}
+	if first.Replicas[0].Observation == nil || first.Replicas[0].Observation.TokensPerSecond != nil || first.Replicas[0].Observation.PromptTokensPerSecond != nil {
+		t.Fatal("first rate observation must be unknown")
+	}
 	var got wire.ReplicaStats
 	for i := 0; i < 8; i++ {
 		got = (<-reports).Replicas[0]

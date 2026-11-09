@@ -137,7 +137,7 @@ func TestChildEnvNeverCarriesKeys(t *testing.T) {
 func TestParseSample(t *testing.T) {
 	text := "# TYPE tensorfold:requests_waiting gauge\ntensorfold:requests_waiting{pool=\"a\"} 2\ntensorfold:requests_waiting{pool=\"b\"} 3\n" +
 		"tensorfold:requests_waiting_total 99\ntensorfold:kv_cache_usage_ratio{pool=\"0\"} 0.25\ntensorfold:kv_cache_usage_ratio{pool=\"1\"} 0.75\n" +
-		"tensorfold:generation_tokens_total 1e3\nbogus{ 1\n"
+		"tensorfold:generation_tokens_total 1e3\ntensorfold:generation_tokens_running 0\nbogus{ 1\n"
 	s := &sample{fam: parseSample(strings.NewReader(text))}
 	if n, ok := s.sum(famWaiting); !ok || n != 5 {
 		t.Fatalf("waiting = %v %v", n, ok)
@@ -205,6 +205,13 @@ func TestKeyFileCarriesAnUnscopedResponsesKey(t *testing.T) {
 }
 
 func TestRates(t *testing.T) {
+	rate := func(a, b *sample, value func(*sample) (float64, bool)) float64 {
+		v := measuredRate(a, b, value)
+		if v == nil {
+			return 0
+		}
+		return *v
+	}
 	at := time.Unix(1000, 0)
 	mk := func(sec float64, base string, gen, running, prompt float64) *sample {
 		return &sample{at: at.Add(time.Duration(sec * float64(time.Second))), base: base,

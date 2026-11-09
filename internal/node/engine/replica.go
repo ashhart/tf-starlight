@@ -24,20 +24,21 @@ type Replica struct {
 	id  string
 	dir string
 
-	mu       sync.Mutex
-	asg      wire.Assignment
-	invalid  string
-	state    string
-	err      string
-	base     string
-	keys     Keys
-	inFlight int
-	waiting  int
-	maxBatch int
-	draining bool
-	lastUsed time.Time
-	crashes  []time.Time
-	spent    int64
+	mu           sync.Mutex
+	asg          wire.Assignment
+	invalid      string
+	state        string
+	err          string
+	base         string
+	keys         Keys
+	inFlight     int
+	waiting      int
+	maxBatch     int
+	metricsEpoch uint64
+	draining     bool
+	lastUsed     time.Time
+	crashes      []time.Time
+	spent        int64
 
 	changed  chan struct{}
 	ctx      context.Context
@@ -123,6 +124,7 @@ func (r *Replica) set(state, msg string) {
 func (r *Replica) setReady(base string, keys Keys, maxBatch int) {
 	r.mu.Lock()
 	r.state, r.err, r.base, r.keys, r.maxBatch = wire.StateReady, "", base, keys, maxBatch
+	r.metricsEpoch++
 	r.mu.Unlock()
 	r.sup.notify()
 }

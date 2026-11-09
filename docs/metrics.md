@@ -3,7 +3,7 @@
 Starlight serves Prometheus metrics on the metrics listener (`listen.metrics`, `127.0.0.1:9090` by default, `:9090` in the
 container image) at `GET /metrics`. Set `metrics.bearer_token_file` to require `Authorization: Bearer <token>`. Labels
 come from the catalogue and fixed vocabularies, never from people, keys or prompts, so cardinality stays bounded by the
-number of models and deployments.
+number of models and deployments. Optional replica observations have a separate fixed scrape cap below.
 
 ## Request series (per instance)
 
@@ -116,22 +116,67 @@ Every instance samples these from Postgres every 15 seconds, so all instances re
 
 The Go runtime and process collectors (`go_*`, `process_*`) are also exported.
 
+## Replica work observations
+
+Set `metrics.replica_observations: true` to register a scrape-time collector. It is off by default. Each scrape queries
+at most 1,025 eligible replicas and exports at most 1,024. Only ready replicas desired to run, in active deployments on
+active nodes seen within 90 seconds, are eligible. The query has a two-second timeout. The collector has no retained
+replica-label cache; stopped, removed and ineligible replicas disappear on the next successful scrape.
+
+| Series | Labels | Meaning |
+| --- | --- | --- |
+| `starlight_replica_decode_tokens_per_second` | `model`, `deployment`, `replica` | Growth in completed plus still-streaming generation tokens per second |
+| `starlight_replica_prompt_tokens_per_second` | same | Growth in prompt tokens per second |
+| `starlight_replica_running_requests` | same | Measured running request count |
+| `starlight_replica_waiting_requests` | same | Measured waiting request count |
+| `starlight_replica_kv_usage_ratio` | same | Maximum measured KV use ratio across engine metric label sets |
+| `starlight_replica_observation_age_seconds` | same | Age of the node's measurement, absent without a timestamp |
+| `starlight_replica_observation_fresh` | same | One for a current timestamped observation, otherwise zero |
+| `starlight_replica_observation_valid` | same plus `measurement` | One when that field is known, valid and current, otherwise zero |
+| `starlight_replica_observation_scrape_success` | none | One after a complete query, zero on query/scan failure |
+| `starlight_replica_observation_truncated` | none | One when eligible replicas exceed the cap |
+
+All these series are gauges. `measurement` is `decode`, `prompt`, `running`, `waiting` or `kv`. The maximum is 12,290
+samples per scrape, excluding other Starlight collectors. Replica IDs are installation-generated identifiers. The cap
+bounds current collector memory and series, while your Prometheus retention and relabel policy govern historic UUID
+churn. Installation-wide observations repeat on each gateway; aggregate replicas with `max` across gateway instances.
+The cap selects replicas in ID order, so a truncated scrape is incomplete and cannot describe total fleet capacity.
+
+Nodes retain the engine measurement time. First samples, counter resets, engine restarts, replaced metric label sets,
+missing counters and nonpositive or greater-than-15-second rate windows produce unknown rates. Invalid numbers and KV
+ratios outside zero to one stay unknown. Request counts must fit a signed 32-bit database count. Counter values above
+2^53 - 1 are unknown because float64 cannot preserve unit increments there. Reported rates cannot exceed that counter
+limit divided by one nanosecond. These representation bounds do not describe serving capacity. Measured zero remains zero. Data expires at 15 seconds, including while a
+node continues syncing. Duplicate, reordered and expired reports cannot refresh a prior sample's age. A report must match the current assignment
+generation and cannot predate the replica's current ready period. A failed scrape
+exports its failure gauge without replaying old replica values.
+
+Missing, expired and future-dated measurements have no work-value sample. Future timestamps up to five seconds ahead
+may be stored but are not current until their time arrives; larger clock skew is rejected. Consumers must check
+freshness and per-field validity. No routing policy changes in this feature. Future routing consumers must apply the
+same age rule at decision time rather than treating the last Prometheus value as current indefinitely.
+
+The console uses the same measurement time and expiry rule, shows unknown fields as a dash, and appends a live chart
+point only when a rate is known. Fleet and node rate sums cover measured fresh replicas; `decode_known` and
+`prompt_known` distinguish an empty sum from measured idle work. A sum may have partial coverage and is not a measured
+capacity limit. Per-replica validity series expose the individual gaps.
+
+New nodes send observation metadata only after the server advertises support in sync. Older servers continue receiving
+the previous report shape. An upgraded server treats reports without observation metadata as unknown because their
+zero rates cannot distinguish idle work from first samples or resets. Upgrade nodes to restore qualified observations.
+The existing `replicas.live` JSON stores the latest observation; no schema migration or extra retention table is needed.
+
 ## Not exported as series
 
-- **Per-replica throughput.** Nodes post decode and prompt tokens per second, running and waiting requests and KV-cache use
-  every 5 seconds; Starlight keeps the latest sample for the console's dashboard, but there is no Prometheus series for it
-  yet. Engines expose their own `/metrics` on loopback only.
-- **Certificate expiry.** No series reports certificate lifetimes. `starlight doctor` warns when a node certificate expires
-  within 7 days, the public TLS certificate within 30 days or the workload CA within a year, and fails once the TLS
-  certificate or the CA has expired; run it on a schedule.
-- **Usage and spend.** Per-project and per-person usage live in Postgres (`usage_events`) and the console, not in metrics.
+Per-project and per-person usage and spend remain in Postgres and the console. Node leaf certificate lifetimes remain
+available through `starlight doctor`; public TLS and workload-CA expiry are exported in the fleet series above.
 
 ## Alerts and dashboard
 
 `deploy/prometheus/rules/starlight.yaml` alerts on an instance down, no controller leader, stale or pending nodes, failed or
 lost replicas, a deep queue, a server-error ratio above 5%, a surge in admission refusals, capacity exhaustion,
 `no_route` refusals, high queue waits, a surge in invalid credentials, and a certificate within 14 days of expiry. `deploy/grafana/dashboards/starlight.json` charts
-every series above. Thresholds are starting points; tune them to your traffic.
+the existing fleet and request series. The optional replica series can be queried separately. Thresholds are starting points; tune them to your traffic.
 
 Example queries:
 

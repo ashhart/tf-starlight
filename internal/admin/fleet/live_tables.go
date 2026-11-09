@@ -90,6 +90,7 @@ func connected(ctx context.Context, q db.Querier) ([]Connected, error) {
 
 // NodeLive is a node row of the live view.
 type NodeLive struct {
+	LoadValidity
 	ID                    string     `json:"id"`
 	Name                  string     `json:"name"`
 	State                 string     `json:"state"`
@@ -110,7 +111,7 @@ type NodeLive struct {
 
 // Row is the node as a live-view row.
 func (n Node) Row() NodeLive {
-	return NodeLive{ID: n.ID, Name: n.Name, State: n.State(), Pool: n.Pool, Backend: n.Facts.Backend, Accelerators: n.Accelerators(),
+	return NodeLive{LoadValidity: n.Live.LoadValidity, ID: n.ID, Name: n.Name, State: n.State(), Pool: n.Pool, Backend: n.Facts.Backend, Accelerators: n.Accelerators(),
 		MemoryBytes: n.Facts.MemoryBytes, Ready: n.Ready, Replicas: n.Replicas, TokensPerSecond: n.Live.TokensPerSecond,
 		PromptTokensPerSecond: n.Live.PromptTokensPerSecond, Running: n.Live.Running, Waiting: n.Live.Waiting, KVUsage: n.Live.KVUsage,
 		Fresh: n.Live.Fresh, LastSeen: n.LastSeen}
@@ -118,6 +119,7 @@ func (n Node) Row() NodeLive {
 
 // ModelLive is a model row of the live view.
 type ModelLive struct {
+	RateValidity
 	ID              string  `json:"id"`
 	Name            string  `json:"name"`
 	DisplayName     string  `json:"display_name"`
@@ -154,7 +156,7 @@ func modelsLive(ctx context.Context, q db.Querier, offline bool) ([]ModelLive, e
 			(SELECT count(*) FROM healthy h WHERE h.model_id = m.id AND h.state NOT IN ('failed', 'lost', 'stopped')),
 			(SELECT count(*) FROM healthy h WHERE h.model_id = m.id AND h.state IN ('assigned', 'staging', 'starting')),
 			(SELECT count(DISTINCT h.node_id) FROM healthy h WHERE h.model_id = m.id AND h.state = 'ready'),
-			coalesce((SELECT sum((h.live->>'tokens_per_second')::float8) FROM healthy h WHERE h.model_id = m.id AND h.live_at > now() - `+fresh+`), 0),
+			(SELECT sum((h.live->>'tokens_per_second')::float8) FROM healthy h WHERE h.model_id = m.id AND `+freshLoad("h")+`),
 			(SELECT count(*) FROM admission_queue a WHERE a.model_id = m.id AND a.heartbeat_at > now() - interval '30 seconds' AND a.deadline > now()),
 			(SELECT count(*) FROM provider_routes pr JOIN providers p ON p.id = pr.provider_id WHERE pr.model_id = m.id AND pr.enabled AND p.enabled),
 			(SELECT count(*) FROM deployments d WHERE d.model_id = m.id AND d.status = 'active' AND d.mode <> 'warm')
@@ -168,10 +170,12 @@ func modelsLive(ctx context.Context, q db.Querier, offline bool) ([]ModelLive, e
 		var m ModelLive
 		var status string
 		var loading, onDemand int
+		var decode *float64
 		if err := rows.Scan(&m.ID, &m.Name, &m.DisplayName, &m.RoutePolicy, &status, &m.Ready, &m.Replicas, &loading, &m.Nodes,
-			&m.TokensPerSecond, &m.Queued, &m.CloudRoutes, &onDemand); err != nil {
+			&decode, &m.Queued, &m.CloudRoutes, &onDemand); err != nil {
 			return nil, err
 		}
+		m.DecodeKnown = knownFloat(&m.TokensPerSecond, decode)
 		m.Availability = availability(m, status, loading, onDemand, offline)
 		out = append(out, m)
 	}

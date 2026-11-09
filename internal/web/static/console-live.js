@@ -127,11 +127,14 @@
         var st = el.querySelector('[data-col="state"]');
         if (st) { st.replaceChildren(pill(n.state)); }
         setCol(el, "ready", n.ready + " / " + n.replicas);
-        setCol(el, "tps", n.fresh ? rate(n.tokens_per_second) : "—");
-        setCol(el, "rw", n.fresh ? n.running + " · " + n.waiting : "—");
+        setCol(el, "tps", n.decode_known ? rate(n.tokens_per_second) : "—");
+        setCol(el, "rw", (n.running_known ? n.running : "—") + " · " + (n.waiting_known ? n.waiting : "—"));
         setCol(el, "seen", ago(n.last_seen));
+        setCol(el, "prompt", n.prompt_known ? rate(n.prompt_tokens_per_second) : "—");
         var m = el.querySelector('[data-col="kv"] meter');
-        if (m) { m.value = n.kv_usage; m.textContent = percent(n.kv_usage); }
+        if (m) { m.hidden = !n.kv_known; m.value = n.kv_usage; m.textContent = percent(n.kv_usage); }
+        var unknown = el.querySelector("[data-kv-unknown]");
+        if (unknown) { unknown.hidden = n.kv_known; }
       });
     });
   }
@@ -142,7 +145,7 @@
         if (av) { av.replaceChildren(pill(m.availability)); }
         setCol(el, "ready", m.ready + " / " + m.replicas);
         setCol(el, "nodes", String(m.nodes));
-        setCol(el, "tps", rate(m.tokens_per_second));
+        setCol(el, "tps", m.decode_known ? rate(m.tokens_per_second) : "—");
         setCol(el, "queued", String(m.queued));
       });
     });
@@ -160,8 +163,8 @@
   function render(s) {
     if (s.tiles) {
       var t = s.tiles;
-      set("tokens_per_second", rate(t.tokens_per_second));
-      set("prompt_tokens_per_second", rate(t.prompt_tokens_per_second));
+      set("tokens_per_second", t.decode_known ? rate(t.tokens_per_second) : "—");
+      set("prompt_tokens_per_second", t.prompt_known ? rate(t.prompt_tokens_per_second) : "—");
       set("in_flight", String(t.in_flight_local + t.in_flight_cloud));
       set("in_flight_local", String(t.in_flight_local));
       set("in_flight_cloud", String(t.in_flight_cloud));

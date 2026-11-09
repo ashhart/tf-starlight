@@ -149,6 +149,9 @@ func (t *Starlight) org(ctx context.Context) string {
 }
 
 func (t *Starlight) build() error {
+	if t.Config.Metrics.ReplicaObservations {
+		t.Metrics.RegisterReplicaObservations(t.Pool)
+	}
 	cfg := t.Config
 	proxies, err := httpx.NewProxies(cfg.TrustedProxies)
 	if err != nil {

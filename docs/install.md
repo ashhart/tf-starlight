@@ -86,6 +86,7 @@ overrides. Unknown keys are refused, so typos fail at start-up.
 | `mdns.advertise`, `mdns.instance` | none | off | Advertise `public_url` on the LAN for Connect's `discover` |
 | `metrics.bearer_token_file` | none | none | Require `Authorization: Bearer` on `/metrics` |
 | `metrics.stream_timings` | none | `false` | Observe upstream data, generated SSE output and its flush attempt; see [metrics](metrics.md#stream-observation-boundaries) |
+| `metrics.replica_observations` | none | `false` | Export bounded replica work and freshness gauges; see [metrics](metrics.md#replica-work-observations) |
 | `log.level`, `log.format` | `STARLIGHT_LOG_LEVEL` | `info`, `json` | Structured logs on stderr |
 
 `deploy/compose/starlight.yaml` is a complete example.

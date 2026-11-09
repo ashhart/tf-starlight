@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 
 	"github.com/ashhart/tf-starlight/internal/control/wire"
 )
@@ -38,8 +39,9 @@ func Revoked(err error) bool {
 
 // Client posts JSON to one Starlight base URL.
 type Client struct {
-	HTTP *http.Client
-	Base *url.URL
+	HTTP             *http.Client
+	Base             *url.URL
+	observationStats atomic.Bool
 }
 
 // Enroll exchanges the enrolment token and CSR for an identity.
@@ -51,11 +53,22 @@ func (c *Client) Enroll(ctx context.Context, req wire.EnrollRequest) (wire.Enrol
 // Sync reports state and waits for the desired state.
 func (c *Client) Sync(ctx context.Context, req wire.SyncRequest) (wire.SyncResponse, error) {
 	var out wire.SyncResponse
-	return out, c.post(ctx, wire.PathSync, req, &out)
+	err := c.post(ctx, wire.PathSync, req, &out)
+	if err == nil {
+		c.observationStats.Store(out.ObservationStats)
+	}
+	return out, err
 }
 
 // Stats posts one live stats report; Starlight answers 204.
 func (c *Client) Stats(ctx context.Context, rep wire.StatsReport) error {
+	if !c.observationStats.Load() {
+		copyRep := wire.StatsReport{Replicas: append([]wire.ReplicaStats(nil), rep.Replicas...)}
+		for i := range copyRep.Replicas {
+			copyRep.Replicas[i].Observation = nil
+		}
+		rep = copyRep
+	}
 	return c.post(ctx, wire.PathStats, rep, nil)
 }
 

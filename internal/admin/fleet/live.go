@@ -35,6 +35,7 @@ type Snapshot struct {
 
 // Tiles are the headline numbers.
 type Tiles struct {
+	RateValidity
 	TokensPerSecond       float64  `json:"tokens_per_second"`
 	PromptTokensPerSecond float64  `json:"prompt_tokens_per_second"`
 	InFlightLocal         int      `json:"in_flight_local"`
@@ -91,6 +92,9 @@ func Load(ctx context.Context, q db.Querier, s Scope) (Snapshot, error) {
 			return snap, err
 		}
 	}
+	if !t.DecodeKnown && len(snap.Throughput) == 61 {
+		snap.Throughput = snap.Throughput[:60]
+	}
 	if s.Nodes {
 		nodes, err := Nodes(ctx, q)
 		if err != nil {
@@ -115,15 +119,14 @@ func Load(ctx context.Context, q db.Querier, s Scope) (Snapshot, error) {
 	return snap, nil
 }
 
-const fresh = "interval '" + staleAfter + "'"
-
 func tiles(ctx context.Context, q db.Querier) (Tiles, error) {
 	var t Tiles
 	var stale, failed, pending int
+	var decode, prompt *float64
 	var cloudToday, allToday int64
 	err := q.QueryRow(ctx, `SELECT
-		coalesce((SELECT sum((live->>'tokens_per_second')::float8) FROM replicas WHERE live_at > now() - `+fresh+`), 0),
-		coalesce((SELECT sum((live->>'prompt_tokens_per_second')::float8) FROM replicas WHERE live_at > now() - `+fresh+`), 0),
+		(SELECT sum((r.live->>'tokens_per_second')::float8) FROM replicas r WHERE `+freshLoad("r")+`),
+		(SELECT sum((r.live->>'prompt_tokens_per_second')::float8) FROM replicas r WHERE `+freshLoad("r")+`),
 		(SELECT count(*) FROM leases WHERE heartbeat_at > now() - interval '60 seconds' AND replica_id IS NOT NULL),
 		(SELECT count(*) FROM leases WHERE heartbeat_at > now() - interval '60 seconds' AND route_id IS NOT NULL),
 		(SELECT count(*) FROM admission_queue WHERE heartbeat_at > now() - interval '30 seconds' AND deadline > now()),
@@ -141,11 +144,13 @@ func tiles(ctx context.Context, q db.Querier) (Tiles, error) {
 		(SELECT count(*) FROM usage_events WHERE created_at >= date_trunc('day', now()) AND route_kind = 'provider'),
 		(SELECT count(*) FROM usage_events WHERE created_at >= date_trunc('day', now())),
 		coalesce((SELECT offline FROM settings WHERE id), true)`).
-		Scan(&t.TokensPerSecond, &t.PromptTokensPerSecond, &t.InFlightLocal, &t.InFlightCloud, &t.Queued, &t.ActiveUsers, &t.NodesOnline,
+		Scan(&decode, &prompt, &t.InFlightLocal, &t.InFlightCloud, &t.Queued, &t.ActiveUsers, &t.NodesOnline,
 			&t.NodesTotal, &stale, &failed, &pending, &t.ModelsTotal, &t.TokensToday, &t.CostTodayMicros, &cloudToday, &allToday, &t.Offline)
 	if err != nil {
 		return t, err
 	}
+	t.DecodeKnown = knownFloat(&t.TokensPerSecond, decode)
+	t.PromptKnown = knownFloat(&t.PromptTokensPerSecond, prompt)
 	t.CostToday = Dollars(t.CostTodayMicros)
 	if allToday > 0 {
 		t.CloudShareToday = float64(cloudToday) / float64(allToday)

@@ -107,8 +107,9 @@ type MDNS struct {
 
 // Metrics protects the listener and selects optional stream observations.
 type Metrics struct {
-	BearerTokenFile string `yaml:"bearer_token_file"`
-	StreamTimings   bool   `yaml:"stream_timings"`
+	BearerTokenFile     string `yaml:"bearer_token_file"`
+	StreamTimings       bool   `yaml:"stream_timings"`
+	ReplicaObservations bool   `yaml:"replica_observations"`
 }
 
 // Log selects level and format.

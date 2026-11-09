@@ -56,6 +56,7 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	resp.ObservationStats = true
 	resp.RenewAfter = cert.NotBefore.Add(cert.NotAfter.Sub(cert.NotBefore) * 2 / 3).Unix()
 	httpx.JSON(w, http.StatusOK, resp)
 }

@@ -1,9 +1,10 @@
 package control
 
 import (
+	"context"
 	"encoding/json"
-	"math"
 	"net/http"
+	"time"
 
 	"github.com/ashhart/tf-starlight/internal/control/wire"
 	"github.com/ashhart/tf-starlight/internal/httpx"
@@ -25,11 +26,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 		rep.Replicas = rep.Replicas[:256]
 	}
 	for _, st := range rep.Replicas {
-		st.TokensPerSecond, st.PromptTokensPerSecond = finite(st.TokensPerSecond), finite(st.PromptTokensPerSecond)
-		st.KVUsage = min(finite(st.KVUsage), 1)
-		st.Running, st.Waiting = max(st.Running, 0), max(st.Waiting, 0)
-		live, _ := json.Marshal(st)
-		if _, err := s.Pool.Exec(r.Context(), "UPDATE replicas SET live = $3, live_at = now() WHERE id = $1 AND node_id = $2", st.ReplicaID, nodeID, live); err != nil {
+		if err := s.recordStats(r.Context(), nodeID, st, time.Now()); err != nil {
 			httpx.Write(w, httpx.Plain, err)
 			return
 		}
@@ -38,9 +35,25 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func finite(v float64) float64 {
-	if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 {
-		return 0
+// recordStats retains measurement time, so duplicate or delayed reports cannot renew an old observation.
+func (s *Server) recordStats(ctx context.Context, node string, st wire.ReplicaStats, now time.Time) error {
+	if st.Observation == nil {
+		_, err := s.Pool.Exec(ctx, `UPDATE replicas SET live = '{}', live_at = NULL WHERE id = $1 AND node_id = $2
+			AND NOT (live ? 'observed_at')`, st.ReplicaID, node)
+		return err
 	}
-	return v
+	load, ok := st.Observation.Normalize(now)
+	if !ok || load.Generation <= 0 {
+		return nil
+	}
+	live, err := json.Marshal(load)
+	if err != nil {
+		return err
+	}
+	_, err = s.Pool.Exec(ctx, `UPDATE replicas SET live = $3, live_at = $4::timestamptz
+		WHERE id = $1 AND node_id = $2 AND desired = 'running' AND state = 'ready' AND generation = $5
+ AND (ready_at IS NULL OR ready_at <= $4)
+		AND (NOT (live ? 'observed_at') OR (live->>'observed_at')::timestamptz < $4)`,
+		st.ReplicaID, node, live, load.ObservedAt, load.Generation)
+	return err
 }

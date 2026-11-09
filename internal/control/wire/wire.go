@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/ashhart/tf-starlight/internal/observations"
 )
 
 // Paths served on the node listener; everything except enroll requires a node certificate.
@@ -296,22 +298,24 @@ type SyncRequest struct {
 
 // SyncResponse is the full desired state; nodes stop anything it does not list.
 type SyncResponse struct {
-	Generation  int64        `json:"generation"`
-	NodeStatus  string       `json:"node_status"`
-	Offline     bool         `json:"offline"`
-	Assignments []Assignment `json:"assignments"`
-	PermitKeys  []PermitKey  `json:"permit_keys"`
-	RenewAfter  int64        `json:"renew_after"`
+	Generation       int64        `json:"generation"`
+	NodeStatus       string       `json:"node_status"`
+	Offline          bool         `json:"offline"`
+	Assignments      []Assignment `json:"assignments"`
+	PermitKeys       []PermitKey  `json:"permit_keys"`
+	RenewAfter       int64        `json:"renew_after"`
+	ObservationStats bool         `json:"observation_stats,omitempty"`
 }
 
 // ReplicaStats is a replica's live load, measured by the node from its engine every few seconds.
 type ReplicaStats struct {
-	ReplicaID             string  `json:"replica_id"`
-	TokensPerSecond       float64 `json:"tokens_per_second"`
-	PromptTokensPerSecond float64 `json:"prompt_tokens_per_second"`
-	Running               int     `json:"running"`
-	Waiting               int     `json:"waiting"`
-	KVUsage               float64 `json:"kv_usage"`
+	ReplicaID             string             `json:"replica_id"`
+	TokensPerSecond       float64            `json:"tokens_per_second"`
+	PromptTokensPerSecond float64            `json:"prompt_tokens_per_second"`
+	Running               int                `json:"running"`
+	Waiting               int                `json:"waiting"`
+	KVUsage               float64            `json:"kv_usage"`
+	Observation           *observations.Load `json:"observation,omitempty"`
 }
 
 // StatsReport is posted to PathStats every five seconds while replicas run.

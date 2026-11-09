@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ashhart/tf-starlight/internal/control/wire"
+	"github.com/ashhart/tf-starlight/internal/observations"
 )
 
 // Engine metric families the node reads for live stats.
@@ -26,59 +29,98 @@ const (
 
 // sample is one scrape of an engine process: every value of each family, across its label sets.
 type sample struct {
-	at   time.Time
-	base string
-	fam  map[string][]float64
+	at    time.Time
+	base  string
+	epoch uint64
+	shape map[string]string
+	fam   map[string][]float64
 }
 
 func (s *sample) sum(name string) (float64, bool) {
 	vs, ok := s.fam[name]
 	total := 0.0
 	for _, v := range vs {
+		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 {
+			return 0, false
+		}
 		total += v
 	}
-	return total, ok
+	return total, ok && len(vs) > 0 && !math.IsInf(total, 0)
 }
 
 func (s *sample) max(name string) (float64, bool) {
 	vs, ok := s.fam[name]
 	m := 0.0
 	for _, v := range vs {
+		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
+			return 0, false
+		}
 		m = max(m, v)
 	}
-	return m, ok
+	return m, ok && len(vs) > 0
 }
 
 // produced counts finished and still-streaming tokens, so long replies show throughput while they run.
 func produced(s *sample) (float64, bool) {
-	total, ok := s.sum(famGenTotal)
+	total, ok := counter(s, famGenTotal)
 	if !ok {
 		return 0, false
 	}
-	running, _ := s.sum(famGenRunning)
-	return total + running, true
+	running, ok := counter(s, famGenRunning)
+	if !ok {
+		return 0, false
+	}
+	total += running
+	return total, total <= observations.MaxCounter
 }
 
-func prompted(s *sample) (float64, bool) { return s.sum(famPrompt) }
+func counter(s *sample, family string) (float64, bool) {
+	v, ok := s.sum(family)
+	for _, value := range s.fam[family] {
+		if value > observations.MaxCounter || math.Trunc(value) != value {
+			return 0, false
+		}
+	}
+	return v, ok && v <= observations.MaxCounter
+}
 
-// rate is the per-second growth of value; a first sample, a new process or a counter reset gives no rate.
-func rate(prev, cur *sample, value func(*sample) (float64, bool)) float64 {
-	if prev == nil || cur == nil || prev.base != cur.base {
-		return 0
+func prompted(s *sample) (float64, bool) { return counter(s, famPrompt) }
+
+// measuredRate returns unknown for missing data, process changes, counter resets or invalid windows.
+func measuredRate(prev, cur *sample, value func(*sample) (float64, bool)) *float64 {
+	if prev == nil || cur == nil || prev.base != cur.base || prev.epoch != cur.epoch || !maps.Equal(prev.shape, cur.shape) {
+		return nil
 	}
 	a, okA := value(prev)
 	b, okB := value(cur)
 	dt := cur.at.Sub(prev.at).Seconds()
-	if !okA || !okB || b < a || dt <= 0 {
-		return 0
+	if !okA || !okB || b < a || dt <= 0 || dt > observations.MaxAge.Seconds() {
+		return nil
 	}
-	return (b - a) / dt
+	v := (b - a) / dt
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return nil
+	}
+	return &v
+}
+
+func measuredCount(s *sample, family string) *int {
+	v, ok := s.sum(family)
+	if !ok || v > math.MaxInt32 || math.Trunc(v) != v {
+		return nil
+	}
+	n := int(v)
+	return &n
 }
 
 // parseSample reads the Prometheus text exposition, keeping only the families the node uses.
-func parseSample(r io.Reader) map[string][]float64 {
+func parseSample(r io.Reader) map[string][]float64 { return parseMetrics(r).fam }
+
+func parseMetrics(r io.Reader) *sample {
 	want := map[string]bool{famGenTotal: true, famGenRunning: true, famPrompt: true, famRunning: true, famWaiting: true, famKV: true}
-	out := map[string][]float64{}
+	out := &sample{fam: map[string][]float64{}, shape: map[string]string{}}
+	labels := map[string][]string{}
+	seen := map[string]bool{}
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64<<10), 1<<20)
 	for sc.Scan() {
@@ -86,25 +128,40 @@ func parseSample(r io.Reader) map[string][]float64 {
 		if line == "" || line[0] == '#' {
 			continue
 		}
-		end := strings.IndexAny(line, "{ ")
+		end := strings.IndexAny(line, "{ \t")
 		if end <= 0 || !want[line[:end]] {
 			continue
 		}
-		rest := line[end:]
+		name, rest, key := line[:end], line[end:], ""
+		value := math.NaN()
 		if rest[0] == '{' {
 			brace := strings.LastIndexByte(rest, '}')
 			if brace < 0 {
+				out.fam[name] = append(out.fam[name], value)
 				continue
 			}
+			key = rest[:brace+1]
 			rest = rest[brace+1:]
 		}
 		fields := strings.Fields(rest)
-		if len(fields) == 0 {
-			continue
+		if len(fields) > 0 {
+			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
+				value = v
+			}
 		}
-		if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
-			out[line[:end]] = append(out[line[:end]], v)
+		if seen[name+key] {
+			value = math.NaN()
 		}
+		seen[name+key] = true
+		labels[name] = append(labels[name], key)
+		out.fam[name] = append(out.fam[name], value)
+	}
+	if sc.Err() != nil {
+		return &sample{}
+	}
+	for name, keys := range labels {
+		sort.Strings(keys)
+		out.shape[name] = strings.Join(keys, "\x00")
 	}
 	return out
 }
@@ -141,7 +198,7 @@ func (s *Supervisor) round(ctx context.Context, prev map[string]*sample) wire.St
 	live := map[string]bool{}
 	for _, r := range rs {
 		r.mu.Lock()
-		base, key, ready, inFlight := r.base, r.keys.Read, r.state == wire.StateReady, r.inFlight
+		base, key, ready, epoch, generation := r.base, r.keys.Read, r.state == wire.StateReady, r.metricsEpoch, r.asg.Generation
 		r.mu.Unlock()
 		if !ready || base == "" {
 			continue
@@ -150,20 +207,43 @@ func (s *Supervisor) round(ctx context.Context, prev map[string]*sample) wire.St
 		if err != nil {
 			continue
 		}
+		r.mu.Lock()
+		unchanged := r.state == wire.StateReady && r.metricsEpoch == epoch && r.base == base && r.asg.Generation == generation
+		r.mu.Unlock()
+		if !unchanged {
+			continue
+		}
+		cur.epoch = epoch
 		live[r.id] = true
 		p := prev[r.id]
 		prev[r.id] = cur
-		running, ok := cur.sum(famRunning)
-		if !ok {
-			running = float64(inFlight)
+		load := observations.Load{Generation: generation, ObservedAt: cur.at, TokensPerSecond: measuredRate(p, cur, produced),
+			PromptTokensPerSecond: measuredRate(p, cur, prompted), Running: measuredCount(cur, famRunning), Waiting: measuredCount(cur, famWaiting)}
+		if p != nil {
+			load.WindowSeconds = cur.at.Sub(p.at).Seconds()
 		}
-		waiting, ok := cur.sum(famWaiting)
-		if ok {
-			r.setWaiting(int(waiting))
+		if kv, ok := cur.max(famKV); ok {
+			load.KVUsage = &kv
 		}
-		kv, _ := cur.max(famKV)
-		rep.Replicas = append(rep.Replicas, wire.ReplicaStats{ReplicaID: r.id, TokensPerSecond: rate(p, cur, produced),
-			PromptTokensPerSecond: rate(p, cur, prompted), Running: int(running), Waiting: int(waiting), KVUsage: kv})
+		load, _ = load.Normalize(cur.at)
+		st := wire.ReplicaStats{ReplicaID: r.id, Observation: &load}
+		if load.TokensPerSecond != nil {
+			st.TokensPerSecond = *load.TokensPerSecond
+		}
+		if load.PromptTokensPerSecond != nil {
+			st.PromptTokensPerSecond = *load.PromptTokensPerSecond
+		}
+		if load.Running != nil {
+			st.Running = *load.Running
+		}
+		if load.Waiting != nil {
+			st.Waiting = *load.Waiting
+			r.setWaiting(st.Waiting)
+		}
+		if load.KVUsage != nil {
+			st.KVUsage = *load.KVUsage
+		}
+		rep.Replicas = append(rep.Replicas, st)
 	}
 	for id := range prev {
 		if !live[id] {
@@ -190,5 +270,14 @@ func (s *Supervisor) scrape(ctx context.Context, base, key string) (*sample, err
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("metrics answered " + resp.Status)
 	}
-	return &sample{at: time.Now(), base: base, fam: parseSample(io.LimitReader(resp.Body, 4<<20))}, nil
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, (4<<20)+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > 4<<20 {
+		return nil, errors.New("metrics response too large")
+	}
+	out := parseMetrics(strings.NewReader(string(raw)))
+	out.at, out.base = time.Now(), base
+	return out, nil
 }

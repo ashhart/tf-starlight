@@ -13,6 +13,7 @@ import (
 
 // Live is a replica's or node's current load from fresh engine stats.
 type Live struct {
+	LoadValidity
 	TokensPerSecond       float64 `json:"tokens_per_second"`
 	PromptTokensPerSecond float64 `json:"prompt_tokens_per_second"`
 	Running               int     `json:"running"`
@@ -20,9 +21,6 @@ type Live struct {
 	KVUsage               float64 `json:"kv_usage"`
 	Fresh                 bool    `json:"fresh"`
 }
-
-// staleAfter is how old a replica's live stats may be before dashboards ignore them.
-const staleAfter = "15 seconds"
 
 // Node is an enrolled machine with its facts and current load.
 type Node struct {
@@ -62,26 +60,33 @@ func (n Node) Accelerators() string {
 	return strings.Join(out, ", ")
 }
 
-const nodeCols = `n.id, n.name, n.status, n.pool, n.labels, n.max_classification, n.address, n.facts, n.agent_version, n.last_seen_at, n.cert_not_after,
+var nodeCols = `n.id, n.name, n.status, n.pool, n.labels, n.max_classification, n.address, n.facts, n.agent_version, n.last_seen_at, n.cert_not_after,
 	(SELECT count(*) FROM replicas r WHERE r.node_id = n.id AND r.state = 'ready' AND r.desired = 'running') + (SELECT count(*) FROM replica_members m
 		JOIN replicas r ON r.id = m.replica_id WHERE m.node_id = n.id AND m.state = 'ready' AND r.desired = 'running'),
 	(SELECT count(*) FROM replicas r WHERE r.node_id = n.id AND r.desired = 'running') + (SELECT count(*) FROM replica_members m
 		JOIN replicas r ON r.id = m.replica_id WHERE m.node_id = n.id AND r.desired = 'running'),
-	coalesce((SELECT sum((r.live->>'tokens_per_second')::float8) FROM replicas r WHERE r.node_id = n.id AND r.live_at > now() - interval '` + staleAfter + `'), 0),
-	coalesce((SELECT sum((r.live->>'prompt_tokens_per_second')::float8) FROM replicas r WHERE r.node_id = n.id AND r.live_at > now() - interval '` + staleAfter + `'), 0),
-	coalesce((SELECT sum((r.live->>'running')::int) FROM replicas r WHERE r.node_id = n.id AND r.live_at > now() - interval '` + staleAfter + `'), 0),
-	coalesce((SELECT sum((r.live->>'waiting')::int) FROM replicas r WHERE r.node_id = n.id AND r.live_at > now() - interval '` + staleAfter + `'), 0),
-	coalesce((SELECT max((r.live->>'kv_usage')::float8) FROM replicas r WHERE r.node_id = n.id AND r.live_at > now() - interval '` + staleAfter + `'), 0),
-	EXISTS (SELECT 1 FROM replicas r WHERE r.node_id = n.id AND r.live_at > now() - interval '` + staleAfter + `')`
+ (SELECT sum((r.live->>'tokens_per_second')::float8) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT sum((r.live->>'prompt_tokens_per_second')::float8) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT sum((r.live->>'running')::int) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT sum((r.live->>'waiting')::int) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT max((r.live->>'kv_usage')::float8) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `)`
 
 func scanNode(row interface{ Scan(...any) error }) (Node, error) {
 	var n Node
 	var lbl, facts []byte
+	var decode, prompt, kv *float64
+	var running, waiting *int
 	err := row.Scan(&n.ID, &n.Name, &n.Status, &n.Pool, &lbl, &n.MaxClass, &n.Address, &facts, &n.AgentVersion, &n.LastSeen, &n.CertNotAfter,
-		&n.Ready, &n.Replicas, &n.Live.TokensPerSecond, &n.Live.PromptTokensPerSecond, &n.Live.Running, &n.Live.Waiting, &n.Live.KVUsage, &n.Live.Fresh)
+		&n.Ready, &n.Replicas, &decode, &prompt, &running, &waiting, &kv)
 	if err != nil {
 		return n, notFound(err)
 	}
+	n.Live.DecodeKnown = knownFloat(&n.Live.TokensPerSecond, decode)
+	n.Live.PromptKnown = knownFloat(&n.Live.PromptTokensPerSecond, prompt)
+	n.Live.RunningKnown = knownInt(&n.Live.Running, running)
+	n.Live.WaitingKnown = knownInt(&n.Live.Waiting, waiting)
+	n.Live.KVKnown = knownFloat(&n.Live.KVUsage, kv)
+	n.Live.Fresh = n.Live.DecodeKnown || n.Live.PromptKnown || n.Live.RunningKnown || n.Live.WaitingKnown || n.Live.KVKnown
 	_ = json.Unmarshal(lbl, &n.Labels)
 	_ = json.Unmarshal(facts, &n.Facts)
 	return n, nil

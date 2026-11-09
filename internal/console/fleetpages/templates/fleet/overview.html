@@ -10,8 +10,8 @@
 <section class="kpis ops" aria-label="Key figures">
 <article class="kpi kpi-hero">
 <p class="kpi-label">Generation now</p>
-<p class="kpi-value"><span data-live="tokens_per_second">{{$p.Rate $t.TokensPerSecond}}</span><span class="kpi-unit">tok/s</span></p>
-<p class="kpi-sub">Prompt <span data-live="prompt_tokens_per_second">{{$p.Rate $t.PromptTokensPerSecond}}</span> tok/s across every fresh replica</p>
+<p class="kpi-value"><span data-live="tokens_per_second">{{if $t.DecodeKnown}}{{$p.Rate $t.TokensPerSecond}}{{else}}—{{end}}</span><span class="kpi-unit">tok/s</span></p>
+<p class="kpi-sub">Prompt <span data-live="prompt_tokens_per_second">{{if $t.PromptKnown}}{{$p.Rate $t.PromptTokensPerSecond}}{{else}}—{{end}}</span> tok/s across measured, fresh replicas</p>
 <svg class="spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" focusable="false">
 <polygon class="spark-fill" data-spark-area="throughput" points="{{$p.SparkArea "throughput"}}"></polygon>
 <polyline class="spark-line" data-spark="throughput" points="{{$p.Spark "throughput"}}"></polyline></svg>
@@ -53,7 +53,7 @@
 
 <section class="charts">
 <article class="panel chart">
-<div class="chart-head"><h2>Throughput</h2><p class="small">Completed tokens per second each minute, last 60 minutes; the newest point is live.</p></div>
+<div class="chart-head"><h2>Throughput</h2><p class="small">Completed tokens per second each minute, last 60 minutes; a live point is added only when a current rate is known.</p></div>
 <svg class="chart-svg" viewBox="0 0 600 140" preserveAspectRatio="none" role="img" aria-label="Throughput over the last hour">
 <line class="grid" x1="0" y1="35" x2="600" y2="35"></line><line class="grid" x1="0" y1="70" x2="600" y2="70"></line><line class="grid" x1="0" y1="105" x2="600" y2="105"></line>
 <polygon class="chart-fill" data-chart-area="throughput" points="{{$p.ChartArea "throughput"}}"></polygon>
@@ -103,8 +103,8 @@
 <td>{{.Backend}}<span class="sub">{{.Accelerators}}</span></td>
 <td class="num">{{$p.Bytes .MemoryBytes}}</td>
 <td class="num" data-col="ready">{{.Ready}} / {{.Replicas}}</td>
-<td class="num" data-col="tps">{{if .Fresh}}{{$p.Rate .TokensPerSecond}}{{else}}—{{end}}</td>
-<td class="num" data-col="rw">{{if .Fresh}}{{.Running}} · {{.Waiting}}{{else}}—{{end}}</td>
+<td class="num" data-col="tps">{{if .DecodeKnown}}{{$p.Rate .TokensPerSecond}}{{else}}—{{end}}</td>
+<td class="num" data-col="rw">{{if .RunningKnown}}{{.Running}}{{else}}—{{end}} · {{if .WaitingKnown}}{{.Waiting}}{{else}}—{{end}}</td>
 <td data-col="kv"><meter min="0" max="1" low="0.75" high="0.9" optimum="0" value="{{.KVUsage}}">{{$p.Percent .KVUsage}}</meter></td>
 <td data-col="seen">{{ago .LastSeen}}</td>
 {{if $p.CanControl}}<td><div class="actions">
@@ -128,7 +128,7 @@
 <td>{{.RoutePolicy}}</td>
 <td class="num" data-col="ready">{{.Ready}} / {{.Replicas}}</td>
 <td class="num" data-col="nodes">{{.Nodes}}</td>
-<td class="num" data-col="tps">{{$p.Rate .TokensPerSecond}}</td>
+<td class="num" data-col="tps">{{if .DecodeKnown}}{{$p.Rate .TokensPerSecond}}{{else}}—{{end}}</td>
 <td class="num" data-col="queued">{{.Queued}}</td>
 <td class="num">{{.CloudRoutes}}</td>
 </tr>{{else}}<tr class="empty"><td colspan="8">No models in the catalogue yet.</td></tr>{{end}}</tbody>

@@ -27,6 +27,7 @@ func TestLiveSnapshotCountsOnlyFreshStats(t *testing.T) {
 		ids.New(), ids.New(), model, replica, u.ID, project)
 	r.exec(`INSERT INTO leases (id, request_id, gateway_id, model_id, replica_id, scopes, priority, deadline, heartbeat_at, principal_type, principal_id)
 		VALUES ($1, 'dead', $2, $3, $4, '{}', 'batch', now() + interval '1 hour', now() - interval '5 minutes', 'user', $5)`, ids.New(), ids.New(), model, replica, u.ID)
+	r.exec("UPDATE replicas SET live=live || jsonb_build_object('observed_at',now(),'generation',1,'window_seconds',5) WHERE id=$1", replica)
 	snap, err := fleet.Load(r.ctx, r.pool, fleet.Scope{Org: true, Usage: true, Nodes: true, Models: true})
 	if err != nil {
 		t.Fatal(err)
