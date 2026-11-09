@@ -83,6 +83,7 @@ overrides. Unknown keys are refused, so typos fail at start-up.
 | `identity.ca_file` | `STARLIGHT_IDP_CA_FILE` | none | PEM bundle added to the system roots for identity providers |
 | `sessions.*` | none | see [security.md](security.md) | Console sessions, Connect tokens, credential cache |
 | `gateway.*` | none | see [admission.md](admission.md) | Body limit, queue timeouts, request timeout, default output tokens |
+| `gateway.routing_shadow` | none | `false` | Compare advisory completion effort with the actual route; see [admission](admission.md#shadow-routing) |
 | `mdns.advertise`, `mdns.instance` | none | off | Advertise `public_url` on the LAN for Connect's `discover` |
 | `metrics.bearer_token_file` | none | none | Require `Authorization: Bearer` on `/metrics` |
 | `metrics.stream_timings` | none | `false` | Observe upstream data, generated SSE output and its flush attempt; see [metrics](metrics.md#stream-observation-boundaries) |

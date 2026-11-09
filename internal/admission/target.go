@@ -12,6 +12,7 @@ type localCand struct {
 	t     Target
 	slots int
 	used  int
+	work  *shadowWork
 }
 
 type cloudCand struct {
@@ -24,20 +25,36 @@ func candidates(ctx context.Context, tx db.Querier, req Request) ([]localCand, [
 	var local []localCand
 	var all []string
 	if req.Local {
-		rows, err := tx.Query(ctx, `SELECT r.id, r.node_id, n.address, d.id, d.revision, m.name, r.slots,
-			(SELECT count(*) FROM leases l WHERE l.replica_id = r.id AND l.heartbeat_at > now() - interval '`+staleSQL+`')
+		extra, filter := "", ""
+		args := []any{req.ModelID, int(req.Class), req.Isolated, nullID(req.Who.ProjectID)}
+		if req.ShadowWork != nil {
+			extra, filter = ",r.generation,count(*) OVER()", shadowFilter
+			args = append(args, shadowQueryArgs(req)...)
+		}
+		query := `SELECT r.id, r.node_id, n.address, d.id, d.revision, m.name, r.slots,
+			(SELECT count(*) FROM leases l WHERE l.replica_id = r.id AND l.heartbeat_at > now() - interval '` + staleSQL + `')` + extra + `
 			FROM replicas r JOIN deployments d ON d.id = r.deployment_id JOIN nodes n ON n.id = r.node_id JOIN models m ON m.id = d.model_id
 			WHERE d.model_id = $1 AND d.status = 'active' AND r.desired = 'running' AND r.state = 'ready' AND r.deployment_revision = d.revision
 			AND n.status = 'active' AND n.last_seen_at > now() - interval '90 seconds'
 			AND array_position(ARRAY['public','internal','confidential','restricted'], n.max_classification) - 1 >= $2
-			AND starlight_members_eligible(r.id, $2) AND (NOT $3 OR `+privateCache("$4")+`)
-			ORDER BY r.id`, req.ModelID, int(req.Class), req.Isolated, nullID(req.Who.ProjectID))
+			AND starlight_members_eligible(r.id, $2) AND (NOT $3 OR ` + privateCache("$4") + `)` + filter + `
+			ORDER BY r.id`
+		if req.ShadowWork != nil {
+			query = shadowCandidateQuery(query)
+		}
+		rows, err := tx.Query(ctx, query, args...)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		for rows.Next() {
 			var c localCand
-			if err := rows.Scan(&c.t.ReplicaID, &c.t.NodeID, &c.t.NodeAddress, &c.t.DeploymentID, &c.t.Revision, &c.t.ServedName, &c.slots, &c.used); err != nil {
+			values := []any{&c.t.ReplicaID, &c.t.NodeID, &c.t.NodeAddress, &c.t.DeploymentID,
+				&c.t.Revision, &c.t.ServedName, &c.slots, &c.used}
+			if req.ShadowWork != nil {
+				c.work = &shadowWork{}
+				values = append(values, &c.work.raw, &c.work.generation, &c.work.reserved)
+			}
+			if err := rows.Scan(values...); err != nil {
 				rows.Close()
 				return nil, nil, nil, err
 			}

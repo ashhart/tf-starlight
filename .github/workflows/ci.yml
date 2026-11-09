@@ -57,6 +57,16 @@ jobs:
         run: go vet ./...
       - name: lean check
         run: go run ./tools/leancheck .
+      - name: shadow metadata payload movement regression
+        run: go test -count=1 -run '^TestUnavailableShadowSnapshotAvoidsWideWindow$' -v ./internal/admission
+      - name: matched shadow admission and gateway overhead profiles
+        run: STARLIGHT_SHADOW_OVERHEAD=1 go test -p 1 -count=1 -timeout=8m -run '^TestRoutingShadowOverhead$' -v ./internal/admission ./internal/e2e
+      - name: matched controlled routing traces
+        run: |
+          for trace in tools/routing-replay/testdata/*.json; do
+            echo "$trace"
+            go run ./tools/routing-replay -input "$trace"
+          done
       - name: race tests
         run: go test -race -count=1 ./...
       - name: 8,000-user load test

@@ -153,8 +153,8 @@ exports its failure gauge without replaying old replica values.
 
 Missing, expired and future-dated measurements have no work-value sample. Future timestamps up to five seconds ahead
 may be stored but are not current until their time arrives; larger clock skew is rejected. Consumers must check
-freshness and per-field validity. No routing policy changes in this feature. Future routing consumers must apply the
-same age rule at decision time rather than treating the last Prometheus value as current indefinitely.
+freshness and per-field validity. The shadow evaluator applies the same age rule at comparison time. Live routing policy remains unchanged; a last
+Prometheus value cannot establish current work indefinitely.
 
 The console uses the same measurement time and expiry rule, shows unknown fields as a dash, and appends a live chart
 point only when a rate is known. Fleet, model and node sums are known only when every fresh report supplies the field.
@@ -173,6 +173,30 @@ legacy zeros count as complete field coverage. A mixed-version downgrade emits o
 This negotiated reporting, storage and dashboard behavior applies even when the exporter flag
 is false; the flag selects only the optional scrape-time collector.
 The existing `replicas.live` JSON stores the latest observation; no schema migration or extra retention table is needed.
+
+## Shadow routing observations
+
+`gateway.routing_shadow` defaults to false. Enabling it records advisory comparisons for actual committed leases while
+serving continues through the existing picker. It does not require `metrics.replica_observations` to be enabled.
+
+| Series | Type | Labels | Meaning |
+| --- | --- | --- | --- |
+| `starlight_routing_shadow_decisions_total` | counter | `model`, `reason`, `agreement` | One result per finished actual lease attempt |
+| `starlight_routing_shadow_effort_seconds` | histogram | `model`, `choice` | Heuristic effort for `actual` or `proposed` when the comparison is ready |
+| `starlight_routing_shadow_observed_estimated_ratio` | histogram | `model` | Successful observed actual-route elapsed seconds divided by its estimated effort |
+| `starlight_routing_shadow_results_total` | counter | `model`, `result` | Actual-route qualification as `observed`, `unobserved`, `failed` or `invalid` |
+
+`agreement` is `same`, `different` or `unavailable`. Reasons are `ready`, `no_alternative`, `missing_actual`,
+`too_many_candidates`, `invalid_work`, `invalid_capacity`, `unknown_observation`, `unknown_backlog`, `untracked_work`,
+`unknown_rate`, `invalid_score`, `cloud_target` or the defensive `invalid`. Availability counters include unavailable
+comparisons; effort/error samples require `ready`. A single candidate has no comparison sample. Models come from the
+catalogue; target, caller, request and cache identities never become labels.
+
+The actual-route timer runs from successful admission to finished relay, before settlement SQL. Failed or unmetered
+attempts cannot become prediction-error samples. The ratio includes gateway/node overhead, the existing prompt estimate,
+the output limit rather than predicted output length, outstanding reservations and uncredited cache effects. A score is
+not a latency upper bound. No proposed-route completion or goodput is inferred from a disagreement or a smaller score.
+The ratio uses buckets 0.01, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 64 and 256; effort uses the request histogram buckets.
 
 ## Not exported as series
 

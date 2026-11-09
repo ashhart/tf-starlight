@@ -162,6 +162,10 @@ func (g *Gateway) revoked(ctx context.Context, c *call) bool {
 }
 
 func (g *Gateway) settle(ctx context.Context, c *call, l *admission.Lease, u admission.Usage, status int, outcome string, first time.Duration, start time.Time) {
+	var shadowDuration time.Duration
+	if l.Shadow != nil {
+		shadowDuration = time.Since(l.Admitted)
+	}
 	route, price := "local", c.model.Chargeback
 	if !l.Target.Local() {
 		route, price = "cloud", l.Target.Route.Prices
@@ -177,6 +181,9 @@ func (g *Gateway) settle(ctx context.Context, c *call, l *admission.Lease, u adm
 		g.Log.Error("settle failed", "request_id", c.requestID, "error", err)
 	}
 	if g.Metrics != nil {
+		if l.Shadow != nil {
+			g.Metrics.ObserveRouting(c.model.Name, *l.Shadow, shadowDuration, u.Observed, status, outcome)
+		}
 		g.Metrics.Observe(c.model.Name, c.protocol, route, status, outcome, time.Since(start), first, u.Prompt, u.Completion, u.Cached)
 		if l.Queued > 0 {
 			g.Metrics.QueueWait.WithLabelValues(c.model.Name, c.req.Priority.String()).Observe(l.Queued.Seconds())
