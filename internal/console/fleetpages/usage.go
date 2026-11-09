@@ -33,6 +33,7 @@ type usagePage struct {
 func (p *pages) usage() {
 	p.c.Handle("GET /console/usage", "", p.usageReport)
 	p.c.Handle("GET /console/usage.csv", "", p.usageCSV)
+	p.c.Handle("GET /console/accounting.csv", "", p.accountingCSV)
 }
 
 // usageQuery reads the report's filters from the query string and checks the caller may see the chosen projects.

@@ -41,12 +41,26 @@ type Record struct {
 
 // Settle releases the lease, replaces reservations with actual use and records the request, in one statement.
 func (a *Admitter) Settle(ctx context.Context, l *Lease, u Usage, rec Record) error {
+	_, err := a.settle(ctx, l, u, rec, false)
+	return err
+}
+
+// SettleResult returns settled, late, duplicate, complete, released, unknown, expired, unobserved or unverified.
+func (a *Admitter) SettleResult(ctx context.Context, l *Lease, u Usage, rec Record) (string, error) {
+	return a.settle(ctx, l, u, rec, true)
+}
+
+func (a *Admitter) settle(ctx context.Context, l *Lease, u Usage, rec Record, result bool) (string, error) {
 	defer drop(l.ID)
+	observed := u.Observed
 	if !u.Observed {
 		u = Usage{Prompt: l.req.Tokens, Micros: l.req.Micros}
 	}
 	args := map[string]any{"lease": l.ID, "tokens": u.Prompt + u.Completion, "micros": u.Micros, "usage": ids.New(), "request": rec.RequestID,
-		"principal_type": rec.PrincipalType, "principal_id": rec.PrincipalID, "user_id": rec.UserID, "project_id": rec.ProjectID,
+		"observed": observed, "lease_request": l.req.RequestID, "lease_gateway": a.GatewayID,
+		"lease_principal_type": l.req.Who.PrincipalType, "lease_principal_id": l.req.Who.PrincipalID,
+		"lease_project_id": l.req.Who.ProjectID,
+		"principal_type":   rec.PrincipalType, "principal_id": rec.PrincipalID, "user_id": rec.UserID, "project_id": rec.ProjectID,
 		"api_key_id": rec.APIKeyID, "task_id": rec.TaskID, "model": l.req.ModelID, "model_name": rec.ModelName, "route_kind": "local",
 		"protocol": rec.Protocol, "status": rec.Status, "outcome": rec.Outcome, "prompt": u.Prompt, "completion": u.Completion,
 		"cached": u.Cached, "cost": u.Micros, "queue_ms": rec.Queue.Milliseconds(), "ttft_ms": rec.TTFT.Milliseconds(),
@@ -56,10 +70,15 @@ func (a *Admitter) Settle(ctx context.Context, l *Lease, u Usage, rec Record) er
 	} else {
 		args["route_kind"], args["route_id"] = "provider", l.Target.Route.ID
 	}
-	return a.retry(ctx, func(ctx context.Context) error {
+	var state string
+	err := a.retry(ctx, func(ctx context.Context) error {
+		if result {
+			return a.Pool.QueryRow(ctx, "SELECT starlight_settle_result($1)", args).Scan(&state)
+		}
 		_, err := a.Pool.Exec(ctx, "SELECT starlight_settle($1)", args)
 		return err
 	})
+	return state, err
 }
 
 // release gives back a lease whose caller left before using it, refunding its reservations.

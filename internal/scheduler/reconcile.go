@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ashhart/tf-starlight/internal/accounting"
 	"github.com/ashhart/tf-starlight/internal/admission"
 	"github.com/ashhart/tf-starlight/internal/db"
 	"github.com/ashhart/tf-starlight/internal/ids"
@@ -16,11 +17,12 @@ import (
 
 // Controller reconciles desired deployments into replicas on nodes.
 type Controller struct {
-	Pool     *pgxpool.Pool
-	Instance string
-	Log      *slog.Logger
-	Every    time.Duration
-	Hourly   []func(context.Context) error
+	Pool       *pgxpool.Pool
+	Instance   string
+	Log        *slog.Logger
+	Every      time.Duration
+	Hourly     []func(context.Context) error
+	Accounting func(accounting.MaintenanceEvent)
 }
 
 // action is one change the controller makes.
@@ -46,6 +48,7 @@ func (c *Controller) Lead(ctx context.Context, epoch int64) {
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	house := newHousekeeper(c.Pool, c.Hourly)
+	house.log, house.accounting = c.Log, c.Accounting
 	for ctx.Err() == nil {
 		if err := c.Pass(ctx, epoch); err != nil && ctx.Err() == nil && c.Log != nil {
 			c.Log.Warn("reconcile failed", "error", err)

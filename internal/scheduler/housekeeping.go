@@ -2,10 +2,12 @@ package scheduler
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ashhart/tf-starlight/internal/accounting"
 	"github.com/ashhart/tf-starlight/internal/admission"
 )
 
@@ -14,6 +16,8 @@ type housekeeper struct {
 	pool                      *pgxpool.Pool
 	hourly                    []func(context.Context) error
 	reaped, pruned, partition time.Time
+	log                       *slog.Logger
+	accounting                func(accounting.MaintenanceEvent)
 }
 
 func newHousekeeper(pool *pgxpool.Pool, hourly []func(context.Context) error) *housekeeper {
@@ -36,7 +40,13 @@ var expiry = []string{
 func (h *housekeeper) run(ctx context.Context) {
 	now := time.Now()
 	if now.Sub(h.reaped) >= 15*time.Second {
-		_, _ = admission.Reap(ctx, h.pool)
+		start := time.Now()
+		n, err := admission.Reap(ctx, h.pool)
+		if err != nil {
+			n = 0
+		}
+		h.reportAccounting(accounting.MaintenanceEvent{Stage: "reap", Count: n, Elapsed: time.Since(start), Err: err})
+		h.maintainAccounting(ctx)
 		h.reaped = now
 	}
 	if now.Sub(h.pruned) >= time.Hour {

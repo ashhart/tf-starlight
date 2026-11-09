@@ -61,6 +61,8 @@ jobs:
         run: go test -race -count=1 ./...
       - name: 8,000-user load test
         run: STARLIGHT_SCALE=1 go test -count=1 -run TestEightThousandUsers -v ./internal/e2e
+      - name: receipt cleanup at 200 expired rows per second
+        run: STARLIGHT_ACCOUNTING_CAPACITY=1 go test -count=1 -timeout=2m -run TestAccountingCleanupSustainsTwoHundredExpiredReceiptsASecond -v ./internal/accounting
 
   drills:
     timeout-minutes: 15
@@ -92,10 +94,12 @@ jobs:
       - name: Postgres 17 client tools, to match the server
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          sudo apt-get install -y --no-install-recommends postgresql-client-17 postgresql-17
           echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
       - name: kill the controller leader, then restore a backup into a new database
         run: go test -count=1 -run TestHighAvailabilityDrills -v ./internal/e2e
+      - name: terminal accounting survives database and fresh-worker restarts
+        run: STARLIGHT_POSTGRES_DRILL=1 go test -count=1 -timeout=2m -run '^TestTerminalAccountingSurvivesDatabaseAndWorkerRestart$' -v ./internal/e2e
 
   engine:
     timeout-minutes: 15
