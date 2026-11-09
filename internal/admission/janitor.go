@@ -71,8 +71,7 @@ func beat(ctx context.Context, pool *pgxpool.Pool, gatewayID string) {
 func Reap(ctx context.Context, pool *pgxpool.Pool) (int, error) {
 	reaped := 0
 	err := db.Tx(ctx, pool, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `DELETE FROM leases WHERE heartbeat_at < now() - interval '`+staleSQL+`'
-			RETURNING model_id, budget_keys, starlight_amounts(budget_keys, reserved_tokens, reserved_micros)`)
+		rows, err := tx.Query(ctx, `SELECT model_id, budget_keys, amounts FROM starlight_reap_stale(interval '`+staleSQL+`')`)
 		if err != nil {
 			return err
 		}

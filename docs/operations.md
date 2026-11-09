@@ -99,6 +99,47 @@ Schema 10 adds once-only lease settlement. After applying it, restarted instance
 keeps its existing signature, so already-running older instances call the new settlement behavior. Complete the rollout
 before restarting older instances, following the backup/restore rollback procedure above.
 
+Schema 11 adds immutable terminal lease receipts, separately retained late observations and a durable accounting audit
+queue. Apply `0011_terminal_usage.sql` before replacing gateways/controllers. Already-running schema 10 clients retain
+the void settlement/release calls. Their ordinary usage still settles once; a missing observed flag means the receipt
+cannot assert whether the charge was measured. Their raw reaper deletes record `legacy_deleted` with an unknown charge,
+even if the old reaper subsequently charges counters. Finish the rollout to obtain proven reaper charge receipts.
+Restarted older builds refuse schema 11. Rollback requires the pre-migration backup, as above.
+
+### Terminal charges and late usage
+
+A new reaper records each dead lease's full reservation charge before deleting the lease, in the same transaction as
+counter settlement. It does not fabricate observed tokens. Normal settlement records its original charge and whether
+usage arrived. A released lease is terminal and cannot acquire a late observation.
+
+An upgraded gateway can report the first observed usage for a known reaped, legacy-deleted or conservatively settled
+lease within seven days. Admission checks the original lease's request hash, gateway, caller, project, model and target.
+The separate late record includes the final protocol/status/outcome, observed tokens/cost and phase durations. It has
+zero additional budget effect. Identical semantic replay succeeds; a different observation for that lease fails. A normal
+settlement that already observed usage is complete. Unknown, expired, unobserved and older unverified reports add no work.
+`Admitter.SettleResult` distinguishes these states; the existing error-only `Settle` call retains compatibility.
+
+The first-report horizon is seven days after the terminal event. An accepted late report remains for at least 90 days;
+identical replay during retention remains a duplicate after the first-report horizon. After pruning, the lease is unknown
+and cannot mint usage. Pending audit entries prevent pruning. The leader attempts at most 100 audit appends and 1,000
+receipt removals every 15 seconds, with separate two-second deadlines. Backlogs can extend retention. Audit failures leave
+durable pending work; they do not repeat inference, refund a reaped charge or charge observed work a second time.
+
+The worker uses the existing tamper-evident audit chain. Each reaped/legacy terminal event is queued even if no gateway
+reports. A late event follows its terminal event and embeds the frozen receipt/report hashes and the terminal audit
+sequence/hash. Audit append and linkage commit together. Ordinary observed settlement adds no global audit-chain lock or
+extra database round trip. Receipts retain opaque authority IDs and a request hash, without request content, raw client
+labels, endpoint URLs or credentials. Database-owner privileges can alter schema/triggers; retain the existing external
+audit exports and backup controls for that trust boundary.
+
+Authorized usage readers can download `/console/accounting.csv?from=YYYY-MM-DD&to=YYYY-MM-DD&project=UUID`.
+The optional project filter uses the existing usage permissions. Rows are selected by terminal time and capped at 1,000;
+`X-Starlight-Truncated: true` means to narrow the date/project range. Unknown legacy charges are blank. Original charged
+amounts, late observed work, zero additional budget effect and pending/linked audit state occupy separate columns.
+The existing `/console/usage.csv` totals remain unchanged and do not include late observations. The accounting export
+covers retained terminal receipts, not a lifetime history. An unreported dead gateway has a terminal charge receipt;
+its unobserved actual work remains unknown. This mechanism does not persist an in-flight gateway response across a crash.
+
 Nodes and Connect are upgraded separately from Starlight; check the release notes for changes to the node protocol. Nodes
 need TensorFold 1.2.0 or newer, and an upgraded engine is picked up at the next start of each replica.
 

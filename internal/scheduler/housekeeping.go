@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ashhart/tf-starlight/internal/accounting"
 	"github.com/ashhart/tf-starlight/internal/admission"
 )
 
@@ -37,6 +38,12 @@ func (h *housekeeper) run(ctx context.Context) {
 	now := time.Now()
 	if now.Sub(h.reaped) >= 15*time.Second {
 		_, _ = admission.Reap(ctx, h.pool)
+		auditCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		_, _ = accounting.Drain(auditCtx, h.pool, 100)
+		cancel()
+		pruneCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		_, _ = accounting.Prune(pruneCtx, h.pool)
+		cancel()
 		h.reaped = now
 	}
 	if now.Sub(h.pruned) >= time.Hour {

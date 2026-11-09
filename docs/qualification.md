@@ -172,6 +172,30 @@ Run the existing process/restore drills and the real fleet/load gate for those d
 The lost-authority request has a 10s context deadline, allowing race instrumentation and scheduling overhead while still
 requiring a 503 refusal with its retry hint. This test bound is not a production response-time objective.
 
+### Terminal accounting qualification
+
+The terminal-accounting fixtures exercise actual admission, reaping and settlement, with separate late records and no
+additional budget effect. They cover repeated/conflicting reports, original authority checks, concurrent reporters,
+settlement/reaper lock order, rollback of failed usage/audit inserts, immutable evidence and ordered audit linkage.
+Controlled aged copies of captured evidence test seven-day first reports, 90-day late retention, pending-audit preservation
+and unknown replay after pruning. Export fixtures check bounded rows, blank unknown charges and actual console permissions.
+
+`TestTerminalMigrationPreservesAnExistingLeaseAndLegacyVoidCall` builds schema 10 from its unchanged migrations before
+applying schema 11. It checks a pre-existing lease and the old void SQL contract. A separate migration failure fixture
+checks transaction rollback and successful retry. These tests do not establish that arbitrary older binaries can restart
+against schema 11; the release gate must separately verify their expected newer-schema refusal.
+
+The opt-in `TestTerminalAccountingSurvivesDatabaseAndWorkerRestart` uses the same isolated Postgres17 helper as the
+promotion drill. It acknowledges a terminal charge and late observation, crashes/restarts its own primary, then starts
+two fresh worker processes. They replay the observation and drain/verify one terminal and one late audit event, with one
+budget effect. It requires `STARLIGHT_POSTGRES_DRILL=1` and matching Postgres17 tools on PATH. It is a bounded local fixture,
+not a production recovery SLO or a claim to recover work a crashed gateway never reported.
+
+`STARLIGHT_SETTLEMENT_LATENCY=1` enables `TestSettlementLatencySample`: five samples of 300 normal observed settlements.
+Compare the identical fixture on the landed baseline and candidate under the same reserved host, without the race
+instrumentation. It measures gateway-to-database settlement latency; it does not establish production throughput or disk
+retention capacity. Keep measured source hashes, results and failed attempts separate in the qualification receipt.
+
 ### Windows
 
 CI's `windows` job runs on the hosted Windows Server 2025 runner, with Go 1.27.3 and its Postgres 17.11:
