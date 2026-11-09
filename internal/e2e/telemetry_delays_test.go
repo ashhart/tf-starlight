@@ -50,7 +50,7 @@ func TestGatewayPhaseDelaysAreAttributedOnTheirOwnClock(t *testing.T) {
 			needle := "WITH target AS"
 			switch phase {
 			case "gateway.admission":
-				query = "SELECT id FROM replicas WHERE state='ready' FOR UPDATE"
+				query = "SELECT pg_advisory_xact_lock(hashtextextended('starlight:target:' || id::text, 0)) FROM replicas WHERE state='ready'"
 				needle = "starlight_admit("
 			case "gateway.settlement":
 				query = "LOCK TABLE usage_events IN ACCESS EXCLUSIVE MODE"
