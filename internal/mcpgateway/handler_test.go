@@ -33,7 +33,10 @@ func handlerFixture(t *testing.T, upstream http.Handler) (*Handler, *atomic.Int3
 		MaxConcurrent: 1, Timeout: config.Duration{Duration: 2 * time.Second}}, Offline: func() bool { return false },
 		Authorize: func(context.Context, *http.Request, []byte) (*principal.Principal, int) {
 			return &principal.Principal{Type: principal.User, ID: "fixture"}, 0
-		}, Record: func(_ context.Context, e Event) error {
+		}, Record: func(ctx context.Context, e Event) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			mu.Lock()
 			defer mu.Unlock()
 			events = append(events, e)

@@ -138,6 +138,13 @@ func TestGovernedMCPRouteUsesFreshAuthorityAndSeparateAccounting(t *testing.T) {
 			t.Fatal("encoded MCP header bypassed secret screen")
 		}
 	}
+	app.MCP.Close()
+	var summaries int
+	var anonymous int
+	if err := pool.QueryRow(ctx, `SELECT count(*),coalesce(sum((details->'status_counts'->>'401')::int),0)
+        FROM audit_events WHERE action='mcp.refusals'`).Scan(&summaries, &anonymous); err != nil {
+		t.Fatal(err)
+	}
 	var inference, events, denials, attempts int
 	var details string
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM usage_events").Scan(&inference); err != nil {
@@ -148,7 +155,7 @@ func TestGovernedMCPRouteUsesFreshAuthorityAndSeparateAccounting(t *testing.T) {
 		FROM audit_events WHERE action LIKE 'mcp.%'`).Scan(&events, &denials, &attempts, &details); err != nil {
 		t.Fatal(err)
 	}
-	if inference != 0 || events != 2 || denials != 12 || attempts != 13 || strings.Contains(details, "private-argument") || strings.Contains(details, "private-result") || strings.Contains(details, key) || strings.Contains(details, "fixture-upstream") {
+	if inference != 0 || events != 2 || denials != 9 || attempts != 10 || summaries != 1 || anonymous != 3 || strings.Contains(details, "private-argument") || strings.Contains(details, "private-result") || strings.Contains(details, key) || strings.Contains(details, "fixture-upstream") {
 		t.Fatal("tool accounting mixed inference or recorded content/credentials")
 	}
 	if _, err := audit.Verify(ctx, pool); err != nil {

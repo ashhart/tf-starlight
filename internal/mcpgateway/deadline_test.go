@@ -2,12 +2,14 @@ package mcpgateway
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -31,6 +33,16 @@ func TestUpstreamTimeoutEndsWithoutRetry(t *testing.T) {
 
 func TestSlowRequestBodyCannotHoldAConcurrencySlotPastItsDeadline(t *testing.T) {
 	h, calls, _ := handlerFixture(t, http.HandlerFunc(complete))
+	var denials atomic.Int32
+	h.options.Record = func(ctx context.Context, e Event) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if e.Phase == "deny" && e.Status == 413 && e.Actor != nil {
+			denials.Add(1)
+		}
+		return nil
+	}
 	h.options.Config.Timeout.Duration = time.Second
 	server := httptest.NewServer(h)
 	defer server.Close()
@@ -52,7 +64,7 @@ func TestSlowRequestBodyCannotHoldAConcurrencySlotPastItsDeadline(t *testing.T) 
 			t.Fatal("incomplete body accepted")
 		}
 	}
-	if time.Since(start) > 3*time.Second || calls.Load() != 0 || len(h.slots) != 0 {
+	if time.Since(start) > 3*time.Second || calls.Load() != 0 || len(h.slots) != 0 || denials.Load() != 1 {
 		t.Fatalf("slow body retained authority or capacity: elapsed=%s calls=%d slots=%d", time.Since(start), calls.Load(), len(h.slots))
 	}
 }

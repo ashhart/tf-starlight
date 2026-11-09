@@ -117,11 +117,23 @@ can establish possibility without proving that the tool executed. `response_comp
 means a valid final RPC response was relayed, including a tool or RPC error; it does
 not mean the tool succeeded. Audit fields include principal/key/project IDs and
 configured tool name and attempt id, never tool arguments, results, bearer values
-or endpoint URLs. Bad credentials, ungranted tools and policy refusals create
-content-free `mcp.deny` records with a status and attempt id. Anonymous refusals
-carry no claimed user identity. Denial recording has a 1s bound; an unavailable
-audit database still refuses the request and logs a fixed accounting error.
-Inference `usage_events`, token settlements and budgets receive no synthetic rows.
+or endpoint URLs. Once identity is established, ungranted tools and policy refusals
+create content-free `mcp.deny` records with a status and attempt id. These records
+use a separate 1s context even if the client has disconnected or its body deadline
+has expired. A revoked key or failed membership resolution establishes no current
+identity and is counted with anonymous refusals.
+
+Refusals before identity is established, including bad Origin and non-POST requests,
+only increment six fixed counters. One worker per gateway writes an `mcp.refusals`
+summary every minute when counters are nonempty. It records only status counts,
+with no attempt id, client, credential, endpoint or body. There is no per-request
+anonymous database write or queued event. Each summary write has a 1s bound;
+failed counts return to the same counters for the next interval. Graceful close
+stops the worker and attempts a final flush. Counters saturate at uint64 maximum.
+Unflushed counts can be lost on a crash or failed final flush. This limits anonymous
+refusal audit writes, not authentication database work or all HTTP traffic.
+An unavailable audit database still refuses requests and logs a fixed accounting
+error. Inference `usage_events`, token settlements and budgets receive no synthetic rows.
 
 JSON replies and SSE messages are also refused if a decoded JSON string contains
 the configured upstream bearer, including JSON-escaped spellings. This prevents

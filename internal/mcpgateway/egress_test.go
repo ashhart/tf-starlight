@@ -2,6 +2,7 @@ package mcpgateway
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -71,12 +72,16 @@ func TestMCPProxyEnvironmentIsIgnoredInAFreshProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer u.HTTP.CloseIdleConnections()
-		u.Timeout = 2 * time.Second
-		h, raw := fixtureRequest("tools/call")
-		x, err := u.send(context.Background(), h, raw)
-		x.close()
-		if err == nil {
-			t.Fatal("reserved invalid endpoint unexpectedly reached a proxy")
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		request, _ := http.NewRequestWithContext(ctx, "POST", u.URL.String(), strings.NewReader("fixture"))
+		result, err := u.HTTP.Do(request)
+		if result != nil {
+			result.Body.Close()
+		}
+		var dns *net.DNSError
+		if !errors.As(err, &dns) || dns.Name != "mcp-proxy-fixture.invalid" {
+			t.Fatalf("MCP did not resolve its fixed endpoint directly: %T", err)
 		}
 		return
 	}

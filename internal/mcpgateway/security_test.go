@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ashhart/tf-starlight/internal/identity/principal"
@@ -37,8 +39,12 @@ func TestDeniedAuthorityCannotReadTheBodyOrHoldToolCapacity(t *testing.T) {
 		r.Body = spy
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
-		if w.Code != 401 || spy.reads != 0 || calls.Load() != 0 || len(*events) != 1 || (*events)[0].Phase != "deny" || (*events)[0].AttemptID == "" {
-			t.Fatal("unauthenticated request consumed work or lost denial accounting")
+		if w.Code != 401 || spy.reads != 0 || calls.Load() != 0 || len(*events) != 0 {
+			t.Fatal("unauthenticated request consumed work or wrote an individual denial")
+		}
+		h.Close()
+		if len(*events) != 1 || (*events)[0].Phase != "refusals" || (*events)[0].RefusalCounts["401"] != 1 || (*events)[0].AttemptID != "" || (*events)[0].Actor != nil {
+			t.Fatal("anonymous refusal summary lost its count or claimed an identity")
 		}
 	}
 }
@@ -99,6 +105,58 @@ func TestReservedMetadataAliasesAreRefused(t *testing.T) {
 		bad := strings.Replace(string(raw), `"`+key+`":`, `"`+strings.ToUpper(key)+`":null,"`+key+`":`, 1)
 		if _, problem := parseRequest(h, []byte(bad)); problem == nil {
 			t.Fatal("reserved metadata alias accepted")
+		}
+	}
+}
+
+func TestAnonymousRefusalsDoNotWritePerRequest(t *testing.T) {
+	h, calls, _ := handlerFixture(t, http.HandlerFunc(complete))
+	h.options.Authorize = func(context.Context, *http.Request, []byte) (*principal.Principal, int) { return nil, 401 }
+	var writes atomic.Int32
+	h.options.Record = func(context.Context, Event) error { writes.Add(1); return nil }
+	for range 100 {
+		if w := callHandler(h, "tools/call", nil); w.Code != 401 {
+			t.Fatal("anonymous refusal status changed")
+		}
+	}
+	if writes.Load() != 0 || calls.Load() != 0 {
+		t.Fatalf("anonymous flood caused %d synchronous audit writes", writes.Load())
+	}
+}
+
+func TestAuthenticatedDenialSurvivesCancelledRequest(t *testing.T) {
+	h, calls, _ := handlerFixture(t, http.HandlerFunc(complete))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var recorded bool
+	h.options.Authorize = func(context.Context, *http.Request, []byte) (*principal.Principal, int) {
+		return &principal.Principal{Type: principal.User, ID: "fixture"}, 403
+	}
+	h.options.Record = func(ctx context.Context, e Event) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if e.Actor == nil || e.Phase != "deny" || e.AttemptID == "" {
+			return errors.New("missing authenticated denial")
+		}
+		recorded = true
+		return nil
+	}
+	w := callHandler(h, "tools/call", func(r *http.Request) { *r = *r.WithContext(ctx) })
+	if w.Code != 403 || !recorded || calls.Load() != 0 {
+		t.Fatal("cancelled request lost its authenticated denial")
+	}
+}
+
+func TestAdditionalReservedMetadataAliasesAreRefused(t *testing.T) {
+	h, raw := fixtureRequest("tools/call")
+	for _, key := range []string{"io.modelcontextprotocol/logLevel", "progressToken", "io.modelcontextprotocol/related-task"} {
+		bad := strings.Replace(string(raw), `"_meta":{`, `"_meta":{"`+strings.ToUpper(key)+`":null,`, 1)
+		if bad == string(raw) {
+			t.Fatal("alias fixture did not modify metadata")
+		}
+		if _, problem := parseRequest(h, []byte(bad)); problem == nil {
+			t.Fatalf("reserved alias %s accepted", key)
 		}
 	}
 }

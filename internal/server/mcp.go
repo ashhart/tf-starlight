@@ -63,31 +63,31 @@ func (t *Starlight) buildMCP(proxies *httpx.Proxies) error {
 		}
 		if caller.P.Via != principal.ViaAPIKey || caller.P.ProjectID != cfg.ProjectID || !keys[caller.P.KeyID] ||
 			!caller.Grants.Can(authz.Inference, cfg.ProjectID) {
-			return nil, http.StatusForbidden
+			return caller.P, http.StatusForbidden
 		}
 		if hint := r.Header.Get("X-Starlight-Project"); hint != "" && hint != cfg.ProjectID {
-			return nil, http.StatusForbidden
+			return caller.P, http.StatusForbidden
 		}
 		policy, err := policies.Project(ctx, cfg.ProjectID)
 		if err != nil {
-			return nil, http.StatusServiceUnavailable
+			return caller.P, http.StatusServiceUnavailable
 		}
 		class := levels.Max(policy.Class, caller.ClassFloor)
 		if raised := r.Header.Get("X-Starlight-Classification"); raised != "" {
 			asked, err := levels.ParseClass(raised)
 			if err != nil {
-				return nil, http.StatusBadRequest
+				return caller.P, http.StatusBadRequest
 			}
 			class = levels.Max(class, asked)
 		}
 		if policy.Isolated && !cfg.Internal || class > ceiling {
-			return nil, http.StatusForbidden
+			return caller.P, http.StatusForbidden
 		}
 		if policies.Offline(ctx) {
-			return nil, http.StatusServiceUnavailable
+			return caller.P, http.StatusServiceUnavailable
 		}
 		if policy.SecretsGuard != "off" && mcpHasCredentials(r, raw) {
-			return nil, http.StatusForbidden
+			return caller.P, http.StatusForbidden
 		}
 		return caller.P, 0
 	}
@@ -98,6 +98,9 @@ func (t *Starlight) buildMCP(proxies *httpx.Proxies) error {
 		if e.Actor != nil {
 			event.ActorType, event.ActorID = string(e.Actor.Type), e.Actor.ID
 			event.Details["key_id"] = e.Actor.KeyID
+		}
+		if e.RefusalCounts != nil {
+			event.Details = map[string]any{"status_counts": e.RefusalCounts}
 		}
 		return audit.Log(ctx, t.Pool, event)
 	}

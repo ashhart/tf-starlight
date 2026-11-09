@@ -25,6 +25,7 @@ type Event struct {
 	Outcome          string
 	DispatchPossible bool
 	ElapsedMS        int64
+	RefusalCounts    map[string]uint64
 }
 
 // Options supplies required installation policy, authorization and durable accounting.
@@ -45,6 +46,7 @@ type Handler struct {
 	allowed  map[string]bool
 	origin   string
 	slots    chan struct{}
+	refusals *refusalSummary
 }
 
 // New constructs a gateway only for a complete explicit grant.
@@ -73,11 +75,15 @@ func New(o Options) (*Handler, error) {
 	for _, tool := range o.Config.Tools {
 		h.allowed[tool] = true
 	}
+	h.refusals = newRefusalSummary(o.Record, o.Log, time.Minute)
 	return h, nil
 }
 
-// Close releases only this gateway's idle upstream connections.
-func (h *Handler) Close() { h.upstream.HTTP.CloseIdleConnections() }
+// Close flushes anonymous counters and releases only this gateway's idle upstream connections.
+func (h *Handler) Close() {
+	h.refusals.close()
+	h.upstream.HTTP.CloseIdleConnections()
+}
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
@@ -107,6 +113,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	actor, status := h.options.Authorize(ctx, r, nil)
+	event.Actor = actor
 	if status != 0 || actor == nil {
 		if status == 0 {
 			status = http.StatusForbidden
@@ -114,7 +121,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.reject(w, r, nil, &failure{status, -32000, "Tool authority is unavailable or denied"}, event)
 		return
 	}
-	event.Actor = actor
 	select {
 	case h.slots <- struct{}{}:
 		defer func() { <-h.slots }()
