@@ -26,7 +26,7 @@ Label values:
 - `protocol`: `openai.chat`, `openai.completions`, `openai.embeddings`, `openai.responses`, `anthropic.messages`,
   `anthropic.count_tokens`.
 - `status`: `2xx`, `4xx`, `5xx`, or `other` for attempts that never received a status.
-- `outcome`: `ok`, `client_error`, `upstream_error`, `upstream_unreachable`, `interrupted`, `cancelled`, `revoked`, or
+- `outcome`: `ok`, `ok_unmetered`, `client_error`, `upstream_error`, `upstream_unreachable`, `interrupted`, `cancelled`, `revoked`, or
   `not_dispatched` for an attempt refused by a node or provider before it started and then retried elsewhere.
 - `priority`: `interactive`, `standard`, `batch`.
 - `reason`: the error code for policy refusals (for example `invalid_json`, `model_not_found`, `credentials_detected`,
@@ -65,6 +65,29 @@ The recognized event shapes are documented in the official
 [OpenAI streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events),
 [Chat streaming reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/streaming-events)
 and [Anthropic streaming reference](https://platform.claude.com/docs/en/build-with-claude/streaming).
+
+### Qualification against a real engine
+
+The opt-in `TestRealEngineStreamTimings` gate uses an already-running loopback engine without changing it. Set
+`STARLIGHT_STREAM_GATE_URL`, `STARLIGHT_STREAM_GATE_MODEL` and `STARLIGHT_STREAM_ENGINE_SHA` to the server URL, served
+model name and full engine revision, then run:
+
+```sh
+go test -run '^TestRealEngineStreamTimings$' -count=1 -v ./internal/gateway
+```
+
+If authentication is required, supply `STARLIGHT_STREAM_GATE_KEY` through the process environment. The gate does not
+print it. It sends one short Chat request and forced `get_weather` tool requests through Chat, Responses and Messages.
+Each request crosses the real relay and a loopback client. It checks identical forwarded body bytes, a terminal event,
+recognized output, a successful flush and causal clock order. Tool cases must contain a tool name or argument payload;
+a model may emit reasoning first, which remains the first output boundary.
+
+Each `stream_gate_receipt` JSON line contains the fixture name, requested engine revision, body digest/byte count,
+observed payload kind, metering outcome and separate gateway/client timings. It contains no prompt, response body,
+endpoint or credential. The declared revision is an input; the run owner must separately verify the actual server
+binary's source revision and hash, model/checkpoint identity and hardware. The client reads SSE events, so its first
+body timestamp bounds first-byte arrival from above. HTTP chunk framing is outside the body-byte comparison. These
+receipts qualify boundary observation, not model quality, token speed or a before/after performance claim.
 
 ## Fleet series (installation-wide)
 
