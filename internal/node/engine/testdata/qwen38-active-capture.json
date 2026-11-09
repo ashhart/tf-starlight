@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "engine_head": "22c46c10aa3b222e46e77f94189b81e4c20d0dfb",
+  "gate_head": "9d9756f01ae1c27e14da1ce0a1d217bc674b30d9",
+  "process_instance": "414c8ca3-714c-4892-a8ee-ee49d24e0bd5",
+  "before_sha256": "fb2c3d16ebd4e7e13c406c64da9701bb4211199e76e2b5188ed415de0bb64933",
+  "after_sha256": "24f91d3196ff212dcb7453a3e9f123ee744ba7940bdc4a655bc4efd94980b4e8",
+  "before_file": "qwen38-before.prom",
+  "after_file": "qwen38-active-after.prom",
+  "before_finished_at": "2026-11-09T05:46:36.747398+00:00",
+  "after_finished_at": "2026-11-09T05:46:42.762107+00:00",
+  "sample_complete_interval_ns": 6015054875,
+  "gate_running_at_second_snapshot": true,
+  "rate_scope": "Observed counter change over this one process capture interval, no model speed or capacity calibration."
+}
