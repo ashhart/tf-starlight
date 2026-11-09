@@ -116,6 +116,11 @@ jobs:
         run: go test -count=1 -run TestHighAvailabilityDrills -v ./internal/e2e
       - name: terminal accounting survives database and fresh-worker restarts
         run: STARLIGHT_POSTGRES_DRILL=1 go test -count=1 -timeout=2m -run '^TestTerminalAccountingSurvivesDatabaseAndWorkerRestart$' -v ./internal/e2e
+      - name: synchronous standby promotion preserves acknowledged accounting
+        env:
+          STARLIGHT_POSTGRES_DRILL: "1"
+          STARLIGHT_TEST_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: go test -race -count=1 -timeout=3m -run '^TestPostgresStandbyPromotionPreservesAcknowledgedAccounting$' -v ./internal/e2e
 
   engine:
     timeout-minutes: 15
