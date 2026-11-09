@@ -26,7 +26,7 @@ Label values:
 - `protocol`: `openai.chat`, `openai.completions`, `openai.embeddings`, `openai.responses`, `anthropic.messages`,
   `anthropic.count_tokens`.
 - `status`: `2xx`, `4xx`, `5xx`, or `other` for attempts that never received a status.
-- `outcome`: `ok`, `ok_unmetered`, `client_error`, `upstream_error`, `upstream_unreachable`, `interrupted`, `cancelled`, `revoked`, or
+- `outcome`: `ok`, `ok_unmetered`, `timeout`, `client_error`, `upstream_error`, `upstream_unreachable`, `interrupted`, `cancelled`, `revoked`, or
   `not_dispatched` for an attempt refused by a node or provider before it started and then retried elsewhere.
 - `priority`: `interactive`, `standard`, `batch`.
 - `reason`: the error code for policy refusals (for example `invalid_json`, `model_not_found`, `credentials_detected`,
@@ -46,7 +46,10 @@ The three new stream series use the gateway's local monotonic clock from request
 heartbeat, signature or lifecycle event does not. The observer recognizes OpenAI Chat/Completions text, reasoning,
 refusal and function/tool deltas; Responses text, refusal, reasoning, function/custom-tool/MCP argument deltas and
 named function/custom-tool items; and Anthropic text, thinking and tool-use blocks/deltas. Other payload types remain
-unobserved. Multi-line SSE data fields are joined for observation without changing the bytes forwarded to the client.
+unobserved. A delta containing both content and reasoning is labeled `text`. Multi-line SSE data fields are joined for
+observation without changing the bytes forwarded to the client. Inspection stops at `[DONE]`, after 64 complete events,
+or before examining more than 256 KiB of complete event bytes. Output that does not match within this budget remains
+unknown; forwarding and legacy usage metering continue normally.
 
 An incomplete event at EOF cannot establish first model output. A stream with no recognized output has no model-output
 or model-flush sample; it is not recorded as zero latency. JSON responses have no new stream samples. A stream that
@@ -58,8 +61,15 @@ A write failure has no flush sample. A successful flush reports what the gateway
 receive time require a separate client receipt. Headers alone cannot satisfy model-output timing.
 
 The existing first-byte series and `usage_events.ttft_ms` retain their earlier boundary for compatibility. Historical
-records must not be reinterpreted as first generated token measurements. Use the model-output series for a declared
+records must not be reinterpreted as first generated token measurements. `ended` in
+[relay.go](../internal/gateway/relay.go) returns `ok_unmetered` when EOF arrives without observed usage; that existing
+outcome does not establish successful token accounting. Use the model-output series for a declared
 stream-payload SLO and keep its payload type and final outcome in the receipt.
+
+The new histograms add outcome and payload/result label combinations to the existing model/route cardinality.
+For each model/route there is one data histogram per observed outcome, up to three output histograms per outcome,
+and up to two flush histograms per outcome. Each histogram has the same buckets as the legacy series. Catalogue size,
+outcome counts and these fixed vocabularies determine the additional series; payload content is never a label.
 
 The recognized event shapes are documented in the official
 [OpenAI streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events),
@@ -78,12 +88,13 @@ go test -run '^TestRealEngineStreamTimings$' -count=1 -v ./internal/gateway
 
 If authentication is required, supply `STARLIGHT_STREAM_GATE_KEY` through the process environment. The gate does not
 print it. It sends one short Chat request and forced `get_weather` tool requests through Chat, Responses and Messages.
-Each request crosses the real relay and a loopback client. It checks identical forwarded body bytes, a terminal event,
+Each request crosses the real relay and a loopback client with an independent map-based payload decoder and SSE parser.
+It checks the same first output event and kind on both sides, identical forwarded body bytes, a terminal event,
 recognized output, a successful flush and causal clock order. Tool cases must contain a tool name or argument payload;
 a model may emit reasoning first, which remains the first output boundary.
 
 Each `stream_gate_receipt` JSON line contains the fixture name, requested engine revision, body digest/byte count,
-observed payload kind, metering outcome and separate gateway/client timings. It contains no prompt, response body,
+observed payload kinds and event indices, metering outcome and separate gateway/client timings. It contains no prompt, response body,
 endpoint or credential. The declared revision is an input; the run owner must separately verify the actual server
 binary's source revision and hash, model/checkpoint identity and hardware. The client reads SSE events, so its first
 body timestamp bounds first-byte arrival from above. HTTP chunk framing is outside the body-byte comparison. These

@@ -1,8 +1,14 @@
 package gateway
 
 import (
+	"bytes"
 	"io"
 	"time"
+)
+
+const (
+	maxOutputInspectionEvents = 64
+	maxOutputInspectionBytes  = 256 << 10
 )
 
 type seenTime struct {
@@ -12,13 +18,16 @@ type seenTime struct {
 
 // streamTimes contains gateway-local observations; none establishes the client's receive time or token boundaries.
 type streamTimes struct {
-	start      time.Time
-	now        func() time.Time
-	data       seenTime
-	output     seenTime
-	flush      seenTime
-	kind       payloadKind
-	flushError bool
+	start         time.Time
+	now           func() time.Time
+	data          seenTime
+	output        seenTime
+	flush         seenTime
+	kind          payloadKind
+	flushError    bool
+	events        int
+	examinedBytes int
+	stopped       bool
 }
 
 func (t *streamTimes) elapsed() time.Duration {
@@ -29,10 +38,21 @@ func (t *streamTimes) elapsed() time.Duration {
 }
 
 func (t *streamTimes) event(protocol string, block []byte) bool {
-	if t == nil || t.output.seen {
+	if t == nil || t.output.seen || t.stopped {
 		return false
 	}
-	kind := modelPayload(protocol, eventData(block))
+	if t.events >= maxOutputInspectionEvents || len(block) > maxOutputInspectionBytes-t.examinedBytes {
+		t.stopped = true
+		return false
+	}
+	t.events++
+	t.examinedBytes += len(block)
+	data := eventData(block)
+	if bytes.Equal(data, []byte("[DONE]")) {
+		t.stopped = true
+		return false
+	}
+	kind := modelPayload(protocol, data)
 	if kind == "" {
 		return false
 	}

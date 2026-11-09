@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -40,22 +39,25 @@ var streamGateCases = []streamGateCase{
 }
 
 type streamGateReceipt struct {
-	Outcome        string      `json:"outcome"`
-	Case           string      `json:"case"`
-	EngineSHA      string      `json:"requested_engine_sha"`
-	Bytes          int         `json:"body_bytes"`
-	Digest         string      `json:"body_sha256"`
-	Payload        payloadKind `json:"first_payload_kind"`
-	Tool           bool        `json:"tool_payload_observed"`
-	ClientHeaders  float64     `json:"client_headers_seconds"`
-	ClientData     float64     `json:"client_first_body_read_seconds"`
-	ClientOutput   float64     `json:"client_first_model_output_seconds"`
-	ClientDone     float64     `json:"client_last_body_read_seconds"`
-	GatewayStart   float64     `json:"gateway_start_after_client_send_seconds"`
-	GatewayHeaders float64     `json:"gateway_headers_seconds"`
-	GatewayData    float64     `json:"gateway_first_body_read_seconds"`
-	GatewayOutput  float64     `json:"gateway_first_model_output_seconds"`
-	GatewayFlush   float64     `json:"gateway_model_flush_attempt_seconds"`
+	GatewayOutputEvent int         `json:"gateway_output_event"`
+	ClientOutputEvent  int         `json:"client_output_event"`
+	ClientPayload      string      `json:"client_first_payload_kind"`
+	Outcome            string      `json:"outcome"`
+	Case               string      `json:"case"`
+	EngineSHA          string      `json:"requested_engine_sha"`
+	Bytes              int         `json:"body_bytes"`
+	Digest             string      `json:"body_sha256"`
+	Payload            payloadKind `json:"first_payload_kind"`
+	Tool               bool        `json:"tool_payload_observed"`
+	ClientHeaders      float64     `json:"client_headers_seconds"`
+	ClientData         float64     `json:"client_first_body_read_seconds"`
+	ClientOutput       float64     `json:"client_first_model_output_seconds"`
+	ClientDone         float64     `json:"client_last_body_read_seconds"`
+	GatewayStart       float64     `json:"gateway_start_after_client_send_seconds"`
+	GatewayHeaders     float64     `json:"gateway_headers_seconds"`
+	GatewayData        float64     `json:"gateway_first_body_read_seconds"`
+	GatewayOutput      float64     `json:"gateway_first_model_output_seconds"`
+	GatewayFlush       float64     `json:"gateway_model_flush_attempt_seconds"`
 }
 
 // TestRealEngineStreamTimings observes an already-running loopback server without starting or modifying an engine.
@@ -64,10 +66,8 @@ func TestRealEngineStreamTimings(t *testing.T) {
 	if base == "" {
 		t.Skip("set STARLIGHT_STREAM_GATE_URL, STARLIGHT_STREAM_GATE_MODEL and STARLIGHT_STREAM_ENGINE_SHA")
 	}
-	u, err := url.Parse(base)
-	if err != nil || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Scheme != "http" && u.Scheme != "https") ||
-		(u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost" && u.Hostname() != "::1") {
-		t.Fatal("stream gate requires a loopback HTTP endpoint without URL credentials")
+	if err := validateStreamGateEndpoint(base); err != nil {
+		t.Fatal(err)
 	}
 	if model == "" || !regexp.MustCompile(`^[a-f0-9]{40}$`).MatchString(head) {
 		t.Fatal("declare the served model and full engine revision")
@@ -85,8 +85,11 @@ func TestRealEngineStreamTimings(t *testing.T) {
 	}
 }
 
-func runStreamGate(base, model, key string, c streamGateCase) (streamGateReceipt, error) {
+func runStreamGate(base, model, key string, c streamGateCase, wrappers ...func(http.ResponseWriter) http.ResponseWriter) (streamGateReceipt, error) {
 	receipt := streamGateReceipt{Case: c.name}
+	if err := validateStreamGateEndpoint(base); err != nil {
+		return receipt, err
+	}
 	var body map[string]any
 	if err := json.Unmarshal([]byte(c.body), &body); err != nil {
 		return receipt, err
@@ -128,7 +131,15 @@ func runStreamGate(base, model, key string, c streamGateCase) (streamGateReceipt
 			io.Reader
 			io.Closer
 		}{io.TeeReader(io.LimitReader(resp.Body, (2<<20)+1), &captured), resp.Body}
-		out := relay(r.Context(), w, resp, c.protocol, false, httpx.OpenAI, start, true)
+		dialect := httpx.OpenAI
+		if c.protocol == providers.Messages {
+			dialect = httpx.Anthropic
+		}
+		destination := http.ResponseWriter(w)
+		for _, wrap := range wrappers {
+			destination = wrap(destination)
+		}
+		out := relay(r.Context(), destination, resp, c.protocol, false, dialect, start, true)
 		results <- result{start: start, out: out, wire: bytes.Clone(captured.Bytes())}
 	}))
 	defer func() { cancel(); proxy.Close() }()
@@ -144,6 +155,7 @@ func runStreamGate(base, model, key string, c streamGateCase) (streamGateReceipt
 	var wire, block bytes.Buffer
 	var outputAt time.Time
 	complete := false
+	events := 0
 	for {
 		line, readErr := reader.ReadBytes('\n')
 		if len(line) > 0 {
@@ -154,13 +166,16 @@ func runStreamGate(base, model, key string, c streamGateCase) (streamGateReceipt
 			block.Write(line)
 		}
 		if len(line) > 0 && len(bytes.TrimRight(line, "\r\n")) == 0 {
-			data := eventData(block.Bytes())
-			kind := modelPayload(c.protocol, data)
+			events++
+			data := clientGateData(block.Bytes())
+			kind, tool := clientGatePayload(c.protocol, data)
 			if kind != "" && outputAt.IsZero() {
 				outputAt = time.Now()
 				receipt.ClientOutput = outputAt.Sub(sent).Seconds()
+				receipt.ClientOutputEvent = events
+				receipt.ClientPayload = kind
 			}
-			if kind == toolPayload {
+			if tool {
 				receipt.Tool = true
 			}
 			var event struct {
@@ -202,6 +217,10 @@ func runStreamGate(base, model, key string, c streamGateCase) (streamGateReceipt
 		outputAt.Before(got.start.Add(times.output.elapsed)) {
 		return receipt, errors.New("gateway and client clock order is invalid")
 	}
+	if times.events != receipt.ClientOutputEvent || string(times.kind) != receipt.ClientPayload {
+		return receipt, errors.New("gateway and independent client disagree on the first output event")
+	}
+	receipt.GatewayOutputEvent = times.events
 	if !complete || c.tool && !receipt.Tool {
 		return receipt, errors.New("missing terminal event or required tool payload")
 	}
@@ -229,6 +248,9 @@ func TestStreamGateFixtureChecksEachProtocol(t *testing.T) {
 					payload = "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\"}}\n\ndata: {\"type\":\"message_stop\"}\n\n"
 				}
 				_, _ = io.WriteString(w, ": heartbeat\n\n")
+				if c.protocol == providers.ChatCompletions {
+					_, _ = io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n")
+				}
 				_ = http.NewResponseController(w).Flush()
 				_, _ = io.WriteString(w, payload)
 			}))
