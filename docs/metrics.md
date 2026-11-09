@@ -203,6 +203,28 @@ The ratio uses buckets 0.01, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 64 and 256; effort 
 Per-project and per-person usage and spend remain in Postgres and the console. Node leaf certificate lifetimes remain
 available through `starlight doctor`; public TLS and workload-CA expiry are exported in the fleet series above.
 
+## Phase telemetry health
+
+An explicitly configured `telemetry.endpoint` enables fixed exporter-health series on gateway instances. The collector
+is independent of request metrics and [replica work observations](#replica-work-observations). With no endpoint there is
+no phase producer, worker or collector traffic, and these optional series are not registered.
+
+`starlight_phase_telemetry_{enqueued,sent,queue_full,failed,rejected,shutdown,invalid,requests,retries,partial,policy}_total`
+are counters without labels. `sent` counts accepted spans, `rejected` counts collector partial rejections, `failed` counts
+spans lost after failed export, and `queue_full`/`shutdown` count explicit local losses. `policy` counts spans withheld by offline mode. `requests`/`retries` count HTTP
+attempts, while `partial` counts partial-success replies even when they reject zero spans. None contains remote error
+text, collector URLs, tokens, trace IDs, callers or request content.
+
+`starlight_phase_telemetry_queue` is the current queued record count. The success-timestamp gauge
+`starlight_phase_telemetry_success_timestamp_seconds` refreshes only when a reply accepts at least one span and remains
+zero before first acceptance. Alert on drops, rejections, failures and a stale acceptance timestamp when sampled work is
+expected. Unsampled or idle traffic supplies no acceptance-freshness guarantee. Gateway and node exporter warnings use
+fixed classes at most once per 15 seconds; the node keeps the same bounded counters internally.
+
+Phase records are best-effort performance data. A trace can be partial because a component is old, disabled, downsampled,
+full or offline. Their transport is separate from durable identity and accounting audit. See [phase telemetry](telemetry.md)
+for fields, sampling, local-clock boundaries and export limits.
+
 ## Alerts and dashboard
 
 `deploy/prometheus/rules/starlight.yaml` alerts on an instance down, no controller leader, stale or pending nodes, failed or

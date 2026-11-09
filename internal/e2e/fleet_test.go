@@ -33,6 +33,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/node/state"
 	"github.com/ashhart/tf-starlight/internal/scheduler"
 	"github.com/ashhart/tf-starlight/internal/server"
+	"github.com/ashhart/tf-starlight/internal/telemetry"
 	"github.com/ashhart/tf-starlight/internal/testutil"
 	"github.com/ashhart/tf-starlight/internal/testutil/fakeengine"
 )
@@ -180,8 +181,9 @@ func (f *fleet) enrolNamed(controlURL, name string, ready int) {
 
 // nodeOptions lets a test present a node as other hardware and give its engines extra settings.
 type nodeOptions struct {
-	facts func(context.Context) wire.Facts
-	env   []string
+	telemetry telemetry.Options
+	facts     func(context.Context) wire.Facts
+	env       []string
 }
 
 func (f *fleet) enrolWith(controlURL, name string, ready int, o nodeOptions) {
@@ -205,7 +207,7 @@ func (f *fleet) enrolWith(controlURL, name string, ready int, o nodeOptions) {
 		defer f.agents.Done()
 		err := agent.Run(f.ctx, agent.Config{StateDir: stateDir, Listen: addr, Advertise: addr, Engine: fakeengine.Binary(t), ModelsDir: t.TempDir(),
 			StartupTimeout: time.Minute, DrainTimeout: time.Second, Env: append([]string{"FAKE_ENGINE_DELAY_MS=15", "FAKE_ENGINE_SYNTHETIC_TPS=120"}, o.env...),
-			Facts: o.facts, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+			Facts: o.facts, Telemetry: o.telemetry, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
 		if err != nil && f.ctx.Err() == nil {
 			t.Errorf("agent: %v", err)
 		}

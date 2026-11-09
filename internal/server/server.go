@@ -40,6 +40,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/plans"
 	"github.com/ashhart/tf-starlight/internal/providers"
 	"github.com/ashhart/tf-starlight/internal/tasks"
+	"github.com/ashhart/tf-starlight/internal/telemetry"
 	"github.com/ashhart/tf-starlight/internal/trust"
 	"github.com/ashhart/tf-starlight/internal/web"
 )
@@ -77,6 +78,7 @@ type Starlight struct {
 
 	publicCert  *certFile
 	credentials *providers.Credentials
+	traces      *telemetry.Recorder
 }
 
 // Open connects, checks the schema and keys, and builds every component without starting listeners.
@@ -114,7 +116,7 @@ func Open(ctx context.Context, cfg config.Config, log *slog.Logger) (*Starlight,
 		return nil, err
 	}
 	if err := t.build(); err != nil {
-		pool.Close()
+		t.Close()
 		return nil, err
 	}
 	return t, nil
@@ -209,7 +211,10 @@ func (t *Starlight) build() error {
 	}
 	identitypages.Register(t.Console)
 	fleetpages.Register(t.Console, fleetpages.WithPlans(t.Plans))
-	return t.buildMCP(proxies)
+	if err := t.buildMCP(proxies); err != nil {
+		return err
+	}
+	return t.buildTelemetry()
 }
 
 // flush drops this instance's caches after an administrative edit; other instances converge within their TTLs.
@@ -301,8 +306,9 @@ func (t *Starlight) ready(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("ready\n"))
 }
 
-// Close releases the pool.
+// Close releases background clients and the database pool.
 func (t *Starlight) Close() {
+	t.traces.Close()
 	if t.MCP != nil {
 		t.MCP.Close()
 	}

@@ -29,21 +29,22 @@ func (d *Duration) UnmarshalYAML(n *yaml.Node) error {
 
 // Config is the whole server configuration.
 type Config struct {
-	PublicURL      string   `yaml:"public_url"`
-	NodeURL        string   `yaml:"node_url"`
-	Roles          []string `yaml:"roles"`
-	TrustedProxies []string `yaml:"trusted_proxies"`
-	Listen         Listen   `yaml:"listen"`
-	TLS            TLS      `yaml:"tls"`
-	Database       Database `yaml:"database"`
-	Keys           Keys     `yaml:"keys"`
-	Identity       Identity `yaml:"identity"`
-	Sessions       Sessions `yaml:"sessions"`
-	Gateway        Gateway  `yaml:"gateway"`
-	MCP            MCP      `yaml:"mcp"`
-	MDNS           MDNS     `yaml:"mdns"`
-	Metrics        Metrics  `yaml:"metrics"`
-	Log            Log      `yaml:"log"`
+	PublicURL      string    `yaml:"public_url"`
+	NodeURL        string    `yaml:"node_url"`
+	Roles          []string  `yaml:"roles"`
+	TrustedProxies []string  `yaml:"trusted_proxies"`
+	Listen         Listen    `yaml:"listen"`
+	TLS            TLS       `yaml:"tls"`
+	Database       Database  `yaml:"database"`
+	Keys           Keys      `yaml:"keys"`
+	Identity       Identity  `yaml:"identity"`
+	Sessions       Sessions  `yaml:"sessions"`
+	Gateway        Gateway   `yaml:"gateway"`
+	MCP            MCP       `yaml:"mcp"`
+	MDNS           MDNS      `yaml:"mdns"`
+	Metrics        Metrics   `yaml:"metrics"`
+	Log            Log       `yaml:"log"`
+	Telemetry      Telemetry `yaml:"telemetry"`
 }
 
 // Listen holds the three listener addresses.
@@ -135,7 +136,8 @@ func Defaults() Config {
 			QueueBatch: Duration{15 * time.Minute}, RequestTimeout: Duration{30 * time.Minute}, DefaultMaxTokens: 4096,
 			AgeingStep: Duration{30 * time.Second},
 		},
-		Log: Log{Level: "info", Format: "json"},
+		Telemetry: Telemetry{SamplePerMillion: 10000, Queue: 256, Batch: 32, Timeout: Duration{time.Second}},
+		Log:       Log{Level: "info", Format: "json"},
 	}
 }
 
@@ -216,6 +218,9 @@ func (c Config) Secure() bool {
 
 // Validate refuses configurations that would start insecurely or ambiguously.
 func (c Config) Validate() error {
+	if err := c.Telemetry.Options().Validate(); err != nil {
+		return err
+	}
 	if err := c.MCP.Validate(); err != nil {
 		return err
 	}

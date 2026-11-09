@@ -44,6 +44,7 @@ type Gateway struct {
 	Log           *slog.Logger
 	limitsMu      sync.Mutex
 	limits        map[string]cachedLimits
+	traces        *phaseTracer
 }
 
 // bodyDeadline bounds how long a client may take to send its request body.
@@ -97,9 +98,12 @@ type call struct {
 func (g *Gateway) infer(protocol, enginePath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		r, requestTrace, preparation := g.traceRequest(r, start)
+		defer requestTrace.End(traceUnset)
 		rc := http.NewResponseController(w)
 		_ = rc.SetReadDeadline(start.Add(bodyDeadline))
 		c, err := g.prepare(r, protocol, enginePath)
+		preparation.End(traceResult(err))
 		_ = rc.SetReadDeadline(time.Time{})
 		if err != nil {
 			g.refuse(w, dialectFor(protocol), err)

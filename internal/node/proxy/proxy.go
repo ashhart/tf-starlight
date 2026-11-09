@@ -19,6 +19,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/httpx"
 	"github.com/ashhart/tf-starlight/internal/ids"
 	"github.com/ashhart/tf-starlight/internal/node/engine"
+	"github.com/ashhart/tf-starlight/internal/telemetry"
 )
 
 // DefaultMaxBody bounds a proxied request body.
@@ -61,6 +62,7 @@ type Server struct {
 	Logger    *slog.Logger
 	Now       func() time.Time
 	MaxBody   int64
+	Telemetry *telemetry.Recorder
 }
 
 // NewTransport is a loopback-only transport that never consults proxy settings or rewrites encodings.
@@ -85,6 +87,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		refuse(w, http.StatusUnauthorized, "client_certificate_required", "a gateway certificate is required")
 		return
 	}
+	r, requestTrace, permitTrace := s.traceRequest(r)
+	defer requestTrace.End(telemetry.Unset)
+	defer permitTrace.End(telemetry.Unset)
 	rest, ok := strings.CutPrefix(r.URL.Path, wire.ReplicaPrefix)
 	if !ok {
 		refuse(w, http.StatusNotFound, "not_found", "unknown route")
@@ -152,6 +157,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer release()
+	permitTrace.End(telemetry.OK)
 	s.forward(w, r, tgt, enginePath, body, claims.RequestID)
 }
 
@@ -161,15 +167,20 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, tgt Target, tar
 		refuse(w, http.StatusServiceUnavailable, "replica_not_ready", "the replica is not ready")
 		return
 	}
-	up, err := http.NewRequestWithContext(r.Context(), r.Method, base+target, bytes.NewReader(body))
+	engineCtx, engineTrace := s.Telemetry.Start(r.Context(), telemetry.NodeEngineRequest)
+	defer engineTrace.End(telemetry.Unset)
+	up, err := http.NewRequestWithContext(engineCtx, r.Method, base+target, bytes.NewReader(body))
 	if err != nil {
 		refuse(w, http.StatusBadGateway, "engine_unavailable", "could not build the engine request")
 		return
 	}
 	copyRequestHeaders(up.Header, r.Header)
+	telemetry.Inject(engineCtx, up.Header)
 	up.Header.Set("Authorization", "Bearer "+keyFor(r.Method, target, body, keys))
 	up.ContentLength = int64(len(body))
+	_, headersTrace := s.Telemetry.Start(engineCtx, telemetry.NodeEngineHeaders)
 	resp, err := s.transport().RoundTrip(up)
+	headersTrace.End(headersResult(resp, err))
 	if err != nil {
 		if r.Context().Err() != nil {
 			return
@@ -186,7 +197,9 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, tgt Target, tar
 	defer resp.Body.Close()
 	copyResponseHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
+	_, relayTrace := s.Telemetry.Start(engineCtx, telemetry.NodeEngineRelay)
 	stream(w, resp.Body)
+	relayTrace.End(telemetry.Unset)
 }
 
 // stream copies the body and flushes after every read so server-sent events arrive as they are produced.
