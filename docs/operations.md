@@ -94,6 +94,11 @@ their leases are reaped.
    `/readyz` answers 503, so finish the rollout rather than restarting old instances. To roll back, restore the
    backup taken before the migration.
 
+Schema 10 adds once-only lease settlement. After applying it, restarted instances need a build that includes
+`0010_settlement_once.sql`; schema 9 builds refuse both startup and `migrate` against that database. The database function
+keeps its existing signature, so already-running older instances call the new settlement behavior. Complete the rollout
+before restarting older instances, following the backup/restore rollback procedure above.
+
 Nodes and Connect are upgraded separately from Starlight; check the release notes for changes to the node protocol. Nodes
 need TensorFold 1.2.0 or newer, and an upgraded engine is picked up at the next start of each replica.
 
