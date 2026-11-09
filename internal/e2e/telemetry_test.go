@@ -16,7 +16,7 @@ func tracedFleet(t *testing.T, collector *tracecollector.Collector, rate int, de
 	t.Helper()
 	f := startStarlight(t, func(c *config.Config) {
 		c.Telemetry = config.Telemetry{Endpoint: collector.URL(), SamplePerMillion: rate, Queue: 4096,
-			Batch: 32, Timeout: config.Duration{time.Second}}
+			Batch: 32, Timeout: config.Duration{Duration: time.Second}}
 		c.Metrics.StreamTimings = true
 	})
 	f.enrolWith(f.nodeURL, "trace-node", 1, nodeOptions{env: []string{"FAKE_ENGINE_DELAY_MS=" + delay},
