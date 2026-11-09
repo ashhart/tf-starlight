@@ -130,8 +130,38 @@ processes, Postgres 17, a TCP balancer before the node listeners, a real `starli
 | 5 November 2026 | Postgres 17.11, `pg_dump` and `pg_restore` 17.11, Go 1.27.3 on Ubuntu | Passes. A new epoch 14.7 seconds after the kill and 15.0 after the pause, never two live replicas of a deployment, and the restored database passes the doctor and the audit check and serves a request |
 
 Writing it found that a standby polled the lease every 5 seconds, so a new leader could take 20 seconds, not the "about
-15" this page and the operations guide promised. A standby now polls every second. Failing over Postgres itself is
-part of [the load gate](#load-at-the-8000-user-profile), which needs real hosts.
+15" this page and the operations guide promised. A standby now polls every second. Postgres standby promotion has
+the isolated host fixture below. The deployment's HA manager and failover under real fleet load remain part of
+[the load gate](#load-at-the-8000-user-profile).
+
+### Isolated Postgres standby promotion
+
+`TestPostgresStandbyPromotionPreservesAcknowledgedAccounting` creates two disposable, loopback-only Postgres17
+clusters. Opt in explicitly; it ignores any existing test database URL and uses its own primary and standby:
+
+```sh
+STARLIGHT_POSTGRES_DRILL=1 go test -race -count=1 -run '^TestPostgresStandbyPromotionPreservesAcknowledgedAccounting$' ./internal/e2e
+```
+
+Put matching Postgres17 `initdb`, `pg_ctl` and `pg_basebackup` binaries on `PATH`. The fixture refuses absent or mismatched
+tools. It uses trust authentication only on its own loopback ports, needs no installed service or credentials, and stops
+only the clusters in its temporary directory. Windows is excluded. Set `STARLIGHT_TEST_HEAD` to the tested full source
+commit to include that declaration in the JSON receipt; the operator must verify the checkout independently.
+
+Before traffic, the fixture checks that streaming replication is synchronous and the primary uses `remote_apply`.
+That mode waits for replay on the synchronous standby before acknowledging a commit; see
+[Postgres synchronous replication](https://www.postgresql.org/docs/17/warm-standby.html#SYNCHRONOUS-REPLICATION).
+It acknowledges a metered request and an open token reservation, stops its primary immediately, then verifies lost
+database authority returns `503 temporarily_unavailable` with a retry hint. It promotes its standby behind a stable
+fixture TCP endpoint and closes the old connections. Committed usage and the open reservation must survive unchanged;
+settling that lease twice must charge once and release its slots and reservations. A new request must work, updated
+budgets must refuse further work, and an old controller epoch must fail its fenced write.
+
+The `db_failover_receipt` records recovery/promotion and failure-response durations with accounting totals, without
+request bodies, keys or endpoints. Its timeouts are engineering test bounds. This fixture uses a fake engine, one host,
+a manually promoted synchronous standby and a fixture endpoint. It does not qualify a deployment's HA manager,
+network partitions, split-brain prevention, asynchronous WAL loss, multi-site recovery, customer RTO/RPO or error budget.
+Run the existing process/restore drills and the real fleet/load gate for those deployment requirements.
 
 ### Windows
 
