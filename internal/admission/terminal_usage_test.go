@@ -38,3 +38,22 @@ func TestReapedLeaseKeepsOneLateObservationWithoutAnotherCharge(t *testing.T) {
 		t.Fatalf("terminal/late timestamps: %v", err)
 	}
 }
+
+func TestFailedReaperChargeRetainsLeaseWithoutTerminalEvidence(t *testing.T) {
+	f := newFleet(t, 1)
+	a := f.admitter()
+	lease := reservedLease(t, f, a)
+	f.exec(t, "UPDATE leases SET heartbeat_at=now()-interval '2 minutes' WHERE id=$1", lease.ID)
+	f.exec(t, "ALTER TABLE counters ADD CONSTRAINT reject_reaped_charge CHECK (used < 50)")
+	if _, err := admission.Reap(context.Background(), f.pool); err == nil {
+		t.Fatal("injected reaper counter failure succeeded")
+	}
+	var leases, receipts, pending, charged, reserved int64
+	err := f.pool.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM leases),
+		(SELECT count(*) FROM terminal_leases),(SELECT count(*) FROM accounting_audit),used,reserved
+		FROM counters WHERE key='tokens:day:project:once'`).Scan(&leases, &receipts, &pending, &charged, &reserved)
+	if err != nil || leases != 1 || receipts != 0 || pending != 0 || charged != 0 || reserved != 100 {
+		t.Fatalf("reaper rollback leases=%d receipts=%d pending=%d used=%d reserved=%d: %v",
+			leases, receipts, pending, charged, reserved, err)
+	}
+}
