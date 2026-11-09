@@ -1,0 +1,18 @@
+# HELP tensorfold:requests_running Requests in prefill or decode.
+# TYPE tensorfold:requests_running gauge
+tensorfold:requests_running 0
+# HELP tensorfold:requests_waiting Requests queued or held until a lane is free.
+# TYPE tensorfold:requests_waiting gauge
+tensorfold:requests_waiting 0
+# HELP tensorfold:generation_tokens_running Generated tokens held by live streams.
+# TYPE tensorfold:generation_tokens_running gauge
+tensorfold:generation_tokens_running 0
+# HELP tensorfold:prompt_tokens_total Prompt tokens of finished requests.
+# TYPE tensorfold:prompt_tokens_total counter
+tensorfold:prompt_tokens_total 0
+# HELP tensorfold:generation_tokens_total Generated tokens of finished requests.
+# TYPE tensorfold:generation_tokens_total counter
+tensorfold:generation_tokens_total 0
+# HELP tensorfold:kv_cache_usage_ratio Tokens in a stream cache divided by that stream's context window.
+# TYPE tensorfold:kv_cache_usage_ratio gauge
+tensorfold:kv_cache_usage_ratio{pool="0"} 0

@@ -193,3 +193,8 @@ histogram_quantile(0.95, sum by (le, model, payload) (rate(starlight_first_model
 sum(rate(starlight_requests_total{route="cloud"}[1h])) / sum(rate(starlight_requests_total[1h]))
 max by (deployment) (starlight_replicas{state="ready"})
 ```
+
+The captured-engine regression fixture covers the six selected families from engine
+`22c46c10aa3b222e46e77f94189b81e4c20d0dfb`. Its 20.7-second interval exceeds the 15-second rate window: the
+positive token totals parse correctly and idle gauges are known zero, while rates remain unknown. It does not
+qualify a positive rate over an in-window real-engine capture.
