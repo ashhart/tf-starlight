@@ -57,6 +57,8 @@ jobs:
         run: go vet ./...
       - name: lean check
         run: go run ./tools/leancheck .
+      - name: combined shadow, tracing and terminal-accounting qualification
+        run: go test -race -count=1 -timeout=4m -run '^TestAuditFollowupsPreserveCombinedServingAndAccounting$' -v ./internal/e2e
       - name: shadow metadata payload movement regression
         run: go test -count=1 -run '^TestUnavailableShadowSnapshotAvoidsWideWindow$' -v ./internal/admission
       - name: matched shadow admission and gateway overhead profiles

@@ -426,3 +426,20 @@ then gather matched mixed-length/hot-cold/unequal-device traffic with exact engi
 usage coverage and actual client completion receipts. A reviewed policy change requires a demonstrated device gain
 without a quality or fairness regression and an immediate return to the existing picker. This change leaves policy
 selection and model outputs with the current implementation.
+
+## Combined audit follow-up qualification
+
+`go test -race -count=1 -timeout=4m -run '^TestAuditFollowupsPreserveCombinedServingAndAccounting$' -v ./internal/e2e`
+compares disabled, shadow-only, tracing-only and both-enabled configurations.
+Each arm sends one warmup and 64 requests from eight clients through two enrolled
+nodes with fake engines and explicitly injected synthetic phase observations.
+Choices and observed usage must match across arms. Every request must have one
+matching settled terminal receipt, and retrying completed terminal reports must
+leave charges and usage counts unchanged. No active lease or late-usage row may
+remain. Enabled shadow decisions and complete 11-span nonstreaming traces are
+checked alongside strict collector/privacy and fixed metric-label checks.
+
+This fixture qualifies the selected combined source tree only. It does not
+approve any constituent PR, measure device inference, establish production
+overhead, promote routing or qualify a deployment/recovery objective. Repeat it
+and the full matrix if a selected head or base changes.
