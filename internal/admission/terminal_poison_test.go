@@ -69,7 +69,7 @@ func TestAccountingDrainAndOrdinaryAuditWriterShareOneChain(t *testing.T) {
 			errs <- audit.Log(context.Background(), f.pool, e)
 		})
 	}
-	wg.Go(func() { _, err := accounting.Drain(context.Background(), f.pool, 100); errs <- err }())
+	wg.Go(func() { _, err := accounting.Drain(context.Background(), f.pool, 100); errs <- err })
 	wg.Wait()
 	close(errs)
 	for err := range errs {
