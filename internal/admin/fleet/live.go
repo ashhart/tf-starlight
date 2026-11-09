@@ -125,8 +125,9 @@ func tiles(ctx context.Context, q db.Querier) (Tiles, error) {
 	var decode, prompt *float64
 	var cloudToday, allToday int64
 	err := q.QueryRow(ctx, `SELECT
-		(SELECT sum((r.live->>'tokens_per_second')::float8) FROM replicas r WHERE `+freshLoad("r")+`),
-		(SELECT sum((r.live->>'prompt_tokens_per_second')::float8) FROM replicas r WHERE `+freshLoad("r")+`),
+		(SELECT `+completeAggregate("r", "tokens_per_second", "float8", "sum")+` FROM replicas r WHERE `+freshLoad("r")+`),
+		(SELECT `+completeAggregate("r", "prompt_tokens_per_second", "float8", "sum")+` FROM replicas r WHERE `+freshLoad("r")+`),
+		(SELECT EXISTS(SELECT 1 FROM replicas r WHERE `+freshLoad("r")+` AND `+legacyLoad("r")+`)),
 		(SELECT count(*) FROM leases WHERE heartbeat_at > now() - interval '60 seconds' AND replica_id IS NOT NULL),
 		(SELECT count(*) FROM leases WHERE heartbeat_at > now() - interval '60 seconds' AND route_id IS NOT NULL),
 		(SELECT count(*) FROM admission_queue WHERE heartbeat_at > now() - interval '30 seconds' AND deadline > now()),
@@ -144,7 +145,7 @@ func tiles(ctx context.Context, q db.Querier) (Tiles, error) {
 		(SELECT count(*) FROM usage_events WHERE created_at >= date_trunc('day', now()) AND route_kind = 'provider'),
 		(SELECT count(*) FROM usage_events WHERE created_at >= date_trunc('day', now())),
 		coalesce((SELECT offline FROM settings WHERE id), true)`).
-		Scan(&decode, &prompt, &t.InFlightLocal, &t.InFlightCloud, &t.Queued, &t.ActiveUsers, &t.NodesOnline,
+		Scan(&decode, &prompt, &t.Legacy, &t.InFlightLocal, &t.InFlightCloud, &t.Queued, &t.ActiveUsers, &t.NodesOnline,
 			&t.NodesTotal, &stale, &failed, &pending, &t.ModelsTotal, &t.TokensToday, &t.CostTodayMicros, &cloudToday, &allToday, &t.Offline)
 	if err != nil {
 		return t, err

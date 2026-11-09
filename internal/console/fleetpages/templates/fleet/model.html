@@ -7,7 +7,7 @@
 <article class="kpi"><p class="kpi-label">Availability</p><p class="kpi-value small-value" data-col="availability"><span class="pill pill-{{$l.Availability}}">{{$l.Availability}}</span></p><p class="kpi-sub">{{$m.RoutePolicy}}</p></article>
 <article class="kpi"><p class="kpi-label">Replicas ready</p><p class="kpi-value" data-col="ready">{{$l.Ready}} / {{$l.Replicas}}</p></article>
 <article class="kpi"><p class="kpi-label">Nodes serving</p><p class="kpi-value" data-col="nodes">{{$l.Nodes}}</p><p class="kpi-sub">{{$l.CloudRoutes}} cloud routes</p></article>
-<article class="kpi"><p class="kpi-label">Generation</p><p class="kpi-value"><span data-col="tps">{{if $l.DecodeKnown}}{{$p.Rate $l.TokensPerSecond}}{{else}}—{{end}}</span><span class="kpi-unit">tok/s</span></p></article>
+<article class="kpi"><p class="kpi-label">Generation</p><p class="kpi-value"><span data-col="tps">{{if $l.DecodeKnown}}{{$p.Rate $l.TokensPerSecond}}{{else}}—{{end}}{{if and $l.Legacy $l.DecodeKnown}} (legacy){{end}}</span><span class="kpi-unit">tok/s</span></p></article>
 <article class="kpi"><p class="kpi-label">Queued</p><p class="kpi-value" data-col="queued">{{$l.Queued}}</p></article>
 </section>
 

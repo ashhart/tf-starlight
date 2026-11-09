@@ -89,6 +89,10 @@ overrides. Unknown keys are refused, so typos fail at start-up.
 | `metrics.replica_observations` | none | `false` | Export bounded replica work and freshness gauges; see [metrics](metrics.md#replica-work-observations) |
 | `log.level`, `log.format` | `STARLIGHT_LOG_LEVEL` | `info`, `json` | Structured logs on stderr |
 
+`metrics.replica_observations` selects only the Prometheus collector. Node wire negotiation, validated observation
+storage and console field/coverage handling apply even when it is false. Old reports remain visible with a legacy
+marker, retaining receipt-time freshness; they do not become qualified per-replica work observations.
+
 `deploy/compose/starlight.yaml` is a complete example.
 
 ## Docker Compose

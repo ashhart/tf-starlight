@@ -157,13 +157,19 @@ freshness and per-field validity. No routing policy changes in this feature. Fut
 same age rule at decision time rather than treating the last Prometheus value as current indefinitely.
 
 The console uses the same measurement time and expiry rule, shows unknown fields as a dash, and appends a live chart
-point only when a rate is known. Fleet and node rate sums cover measured fresh replicas; `decode_known` and
-`prompt_known` distinguish an empty sum from measured idle work. A sum may have partial coverage and is not a measured
-capacity limit. Per-replica validity series expose the individual gaps.
+point only when a rate is known. Fleet, model and node sums are known only when every fresh report supplies the field.
+`decode_known` and
+`prompt_known` distinguish incomplete coverage from measured idle work. Expired reports are excluded, so these sums
+are not a complete capacity measurement of every deployed replica. Per-replica validity series expose individual gaps.
 
 New nodes send observation metadata only after the server advertises support in sync. Older servers continue receiving
-the previous report shape. An upgraded server treats reports without observation metadata as unknown because their
-zero rates cannot distinguish idle work from first samples or resets. Upgrade nodes to restore qualified observations.
+the previous report shape. If a mixed-version listener rejects the advertised observation shape, the node retries once
+with legacy fields and keeps legacy mode until the next successful capability sync.
+An upgraded server preserves reports without observation metadata as legacy values, with receipt-time freshness.
+The console marks these reports as legacy, and its JSON carries `legacy: true`; their zeros cannot distinguish idle
+work from first samples or resets. They are not qualified work samples in the exporter. Upgrade nodes to restore
+qualified observations. This negotiated reporting, storage and dashboard behavior applies even when the exporter flag
+is false; the flag selects only the optional scrape-time collector.
 The existing `replicas.live` JSON stores the latest observation; no schema migration or extra retention table is needed.
 
 ## Not exported as series

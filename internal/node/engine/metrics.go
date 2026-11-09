@@ -198,7 +198,7 @@ func (s *Supervisor) round(ctx context.Context, prev map[string]*sample) wire.St
 	live := map[string]bool{}
 	for _, r := range rs {
 		r.mu.Lock()
-		base, key, ready, epoch, generation := r.base, r.keys.Read, r.state == wire.StateReady, r.metricsEpoch, r.asg.Generation
+		base, key, ready, epoch, generation, inFlight := r.base, r.keys.Read, r.state == wire.StateReady, r.metricsEpoch, r.asg.Generation, r.inFlight
 		r.mu.Unlock()
 		if !ready || base == "" {
 			continue
@@ -226,22 +226,10 @@ func (s *Supervisor) round(ctx context.Context, prev map[string]*sample) wire.St
 			load.KVUsage = &kv
 		}
 		load, _ = load.Normalize(cur.at)
-		st := wire.ReplicaStats{ReplicaID: r.id, Observation: &load}
-		if load.TokensPerSecond != nil {
-			st.TokensPerSecond = *load.TokensPerSecond
-		}
-		if load.PromptTokensPerSecond != nil {
-			st.PromptTokensPerSecond = *load.PromptTokensPerSecond
-		}
-		if load.Running != nil {
-			st.Running = *load.Running
-		}
+		st := legacyStats(r.id, p, cur, inFlight)
+		st.Observation = &load
 		if load.Waiting != nil {
-			st.Waiting = *load.Waiting
-			r.setWaiting(st.Waiting)
-		}
-		if load.KVUsage != nil {
-			st.KVUsage = *load.KVUsage
+			r.setWaiting(*load.Waiting)
 		}
 		rep.Replicas = append(rep.Replicas, st)
 	}

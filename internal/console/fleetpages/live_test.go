@@ -129,3 +129,60 @@ func TestUnknownFieldsStayDifferentFromMeasuredIdleInTheConsole(t *testing.T) {
 		t.Fatal("future observation displayed as current")
 	}
 }
+
+func TestAggregateRatesRequireEveryFreshReplicaToSupplyTheField(t *testing.T) {
+	r := newRig(t)
+	owner := r.user("owner@example.com", "owner", "")
+	r.exec("UPDATE replicas SET live=live || jsonb_build_object('tokens_per_second',0,'prompt_tokens_per_second',0) WHERE id=$1", r.replica)
+	other := ids.New()
+	r.exec(`INSERT INTO replicas(id,deployment_id,deployment_revision,node_id,state,slots,epoch,live,live_at)
+		SELECT $1,deployment_id,1,node_id,'ready',2,1,jsonb_build_object('observed_at',now(),'generation',generation,'running',0),now()
+		FROM replicas WHERE id=$2`, other, r.replica)
+	read := func() fleet.Snapshot {
+		t.Helper()
+		_, body := owner.get("/console/live.json")
+		var s fleet.Snapshot
+		if err := json.Unmarshal([]byte(body), &s); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	s := read()
+	if s.Tiles.DecodeKnown || s.Tiles.PromptKnown || len(s.Throughput) != 60 || s.Models[0].DecodeKnown {
+		t.Fatal("partial fresh coverage became known zero")
+	}
+	for _, n := range s.Nodes {
+		if n.ID == r.node && (n.DecodeKnown || n.PromptKnown || !n.RunningKnown) {
+			t.Fatal("node coverage does not distinguish unknown rates from known running count")
+		}
+	}
+	r.exec("UPDATE replicas SET live=live || jsonb_build_object('tokens_per_second',0,'prompt_tokens_per_second',0,'window_seconds',5) WHERE id=$1", other)
+	s = read()
+	if !s.Tiles.DecodeKnown || !s.Tiles.PromptKnown || s.Tiles.TokensPerSecond != 0 || !s.Models[0].DecodeKnown {
+		t.Fatal("complete measured zero coverage was lost")
+	}
+}
+
+func TestLegacyReportsRemainVisibleAndClearlyMarked(t *testing.T) {
+	r := newRig(t)
+	owner := r.user("owner@example.com", "owner", "")
+	r.exec(`UPDATE replicas SET live=jsonb_build_object('replica_id',id,'tokens_per_second',0,'prompt_tokens_per_second',10,
+		'running',3,'waiting',0,'kv_usage',1),live_at=now() WHERE id=$1`, r.replica)
+	_, body := owner.get("/console/live.json")
+	var s fleet.Snapshot
+	if err := json.Unmarshal([]byte(body), &s); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Tiles.Legacy || !s.Tiles.DecodeKnown || s.Tiles.TokensPerSecond != 0 {
+		t.Fatal("legacy dashboard report was discarded or not marked")
+	}
+	for _, n := range s.Nodes {
+		if n.ID == r.node && (!n.Legacy || !n.RunningKnown || n.Running != 3 || n.KVUsage != 1) {
+			t.Fatalf("legacy node row %+v", n)
+		}
+	}
+	_, page := owner.get("/console/nodes")
+	if !strings.Contains(page, "Legacy report") || !strings.Contains(page, `data-col="rw">3 · 0<`) {
+		t.Fatal("legacy display lost its values or marker")
+	}
+}

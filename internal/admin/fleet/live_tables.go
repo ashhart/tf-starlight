@@ -156,7 +156,8 @@ func modelsLive(ctx context.Context, q db.Querier, offline bool) ([]ModelLive, e
 			(SELECT count(*) FROM healthy h WHERE h.model_id = m.id AND h.state NOT IN ('failed', 'lost', 'stopped')),
 			(SELECT count(*) FROM healthy h WHERE h.model_id = m.id AND h.state IN ('assigned', 'staging', 'starting')),
 			(SELECT count(DISTINCT h.node_id) FROM healthy h WHERE h.model_id = m.id AND h.state = 'ready'),
-			(SELECT sum((h.live->>'tokens_per_second')::float8) FROM healthy h WHERE h.model_id = m.id AND `+freshLoad("h")+`),
+			(SELECT `+completeAggregate("h", "tokens_per_second", "float8", "sum")+` FROM healthy h WHERE h.model_id = m.id AND `+freshLoad("h")+`),
+			(SELECT EXISTS(SELECT 1 FROM healthy h WHERE h.model_id=m.id AND `+freshLoad("h")+` AND `+legacyLoad("h")+`)),
 			(SELECT count(*) FROM admission_queue a WHERE a.model_id = m.id AND a.heartbeat_at > now() - interval '30 seconds' AND a.deadline > now()),
 			(SELECT count(*) FROM provider_routes pr JOIN providers p ON p.id = pr.provider_id WHERE pr.model_id = m.id AND pr.enabled AND p.enabled),
 			(SELECT count(*) FROM deployments d WHERE d.model_id = m.id AND d.status = 'active' AND d.mode <> 'warm')
@@ -172,7 +173,7 @@ func modelsLive(ctx context.Context, q db.Querier, offline bool) ([]ModelLive, e
 		var loading, onDemand int
 		var decode *float64
 		if err := rows.Scan(&m.ID, &m.Name, &m.DisplayName, &m.RoutePolicy, &status, &m.Ready, &m.Replicas, &loading, &m.Nodes,
-			&decode, &m.Queued, &m.CloudRoutes, &onDemand); err != nil {
+			&decode, &m.Legacy, &m.Queued, &m.CloudRoutes, &onDemand); err != nil {
 			return nil, err
 		}
 		m.DecodeKnown = knownFloat(&m.TokensPerSecond, decode)

@@ -62,14 +62,28 @@ func (c *Client) Sync(ctx context.Context, req wire.SyncRequest) (wire.SyncRespo
 
 // Stats posts one live stats report; Starlight answers 204.
 func (c *Client) Stats(ctx context.Context, rep wire.StatsReport) error {
-	if !c.observationStats.Load() {
-		copyRep := wire.StatsReport{Replicas: append([]wire.ReplicaStats(nil), rep.Replicas...)}
-		for i := range copyRep.Replicas {
-			copyRep.Replicas[i].Observation = nil
-		}
-		rep = copyRep
+	qualified := c.observationStats.Load()
+	if !qualified {
+		rep = legacyReport(rep)
 	}
-	return c.post(ctx, wire.PathStats, rep, nil)
+	err := c.post(ctx, wire.PathStats, rep, nil)
+	var status *StatusError
+	if qualified && errors.As(err, &status) && status.Status == http.StatusBadRequest && status.Code == "invalid_body" {
+		err = c.post(ctx, wire.PathStats, legacyReport(rep), nil)
+		if err == nil {
+			c.observationStats.Store(false)
+		}
+	}
+	return err
+}
+
+// legacyReport keeps mixed-version node listeners compatible without changing the caller's observation.
+func legacyReport(rep wire.StatsReport) wire.StatsReport {
+	copyRep := wire.StatsReport{Replicas: append([]wire.ReplicaStats(nil), rep.Replicas...)}
+	for i := range copyRep.Replicas {
+		copyRep.Replicas[i].Observation = nil
+	}
+	return copyRep
 }
 
 // Renew asks for a certificate for a fresh key.

@@ -3,6 +3,7 @@ package control
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"time"
 
@@ -38,8 +39,19 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 // recordStats retains measurement time, so duplicate or delayed reports cannot renew an old observation.
 func (s *Server) recordStats(ctx context.Context, node string, st wire.ReplicaStats, now time.Time) error {
 	if st.Observation == nil {
-		_, err := s.Pool.Exec(ctx, `UPDATE replicas SET live = '{}', live_at = NULL WHERE id = $1 AND node_id = $2
-			AND NOT (live ? 'observed_at')`, st.ReplicaID, node)
+		st.TokensPerSecond = legacyFinite(st.TokensPerSecond)
+		st.PromptTokensPerSecond = legacyFinite(st.PromptTokensPerSecond)
+		st.KVUsage = min(legacyFinite(st.KVUsage), 1)
+		st.Running = min(max(st.Running, 0), math.MaxInt32)
+		st.Waiting = min(max(st.Waiting, 0), math.MaxInt32)
+		live, err := json.Marshal(struct {
+			wire.ReplicaStats
+			Legacy bool `json:"legacy"`
+		}{st, true})
+		if err != nil {
+			return err
+		}
+		_, err = s.Pool.Exec(ctx, `UPDATE replicas SET live=$3,live_at=now() WHERE id=$1 AND node_id=$2`, st.ReplicaID, node, live)
 		return err
 	}
 	load, ok := st.Observation.Normalize(now)
@@ -52,8 +64,15 @@ func (s *Server) recordStats(ctx context.Context, node string, st wire.ReplicaSt
 	}
 	_, err = s.Pool.Exec(ctx, `UPDATE replicas SET live = $3, live_at = $4::timestamptz
 		WHERE id = $1 AND node_id = $2 AND desired = 'running' AND state = 'ready' AND generation = $5
- AND (ready_at IS NULL OR ready_at <= $4)
+		AND (ready_at IS NULL OR ready_at <= $4)
 		AND (NOT (live ? 'observed_at') OR (live->>'observed_at')::timestamptz < $4)`,
 		st.ReplicaID, node, live, load.ObservedAt, load.Generation)
 	return err
+}
+
+func legacyFinite(v float64) float64 {
+	if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 {
+		return 0
+	}
+	return v
 }

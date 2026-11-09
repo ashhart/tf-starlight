@@ -89,7 +89,7 @@ func TestStatsDoNotRenewOnReplayOrBorrowAnotherNodesReplica(t *testing.T) {
 	}
 }
 
-func TestLegacyStatsCannotAssertMeasuredZero(t *testing.T) {
+func TestLegacyStatsRemainAvailableButAreMarkedUnqualified(t *testing.T) {
 	pool := testutil.DB(t)
 	ctx := context.Background()
 	model, dep, node, replica := ids.New(), ids.New(), ids.New(), ids.New()
@@ -110,7 +110,7 @@ func TestLegacyStatsCannotAssertMeasuredZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	var missing bool
-	if err := pool.QueryRow(ctx, "SELECT live_at IS NULL AND NOT(live ? 'tokens_per_second') FROM replicas WHERE id=$1", replica).Scan(&missing); err != nil || !missing {
-		t.Fatalf("legacy zero asserted as a measurement: %v, %v", missing, err)
+	if err := pool.QueryRow(ctx, "SELECT live_at IS NOT NULL AND live ? 'tokens_per_second' AND live->>'legacy'='true' AND NOT(live ? 'observed_at') FROM replicas WHERE id=$1", replica).Scan(&missing); err != nil || !missing {
+		t.Fatalf("legacy report was cleared or asserted as a qualified measurement: %v, %v", missing, err)
 	}
 }

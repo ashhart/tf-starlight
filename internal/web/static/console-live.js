@@ -127,6 +127,7 @@
         var st = el.querySelector('[data-col="state"]');
         if (st) { st.replaceChildren(pill(n.state)); }
         setCol(el, "ready", n.ready + " / " + n.replicas);
+        setCol(el, "telemetry", n.legacy ? "Legacy report" : "");
         setCol(el, "tps", n.decode_known ? rate(n.tokens_per_second) : "—");
         setCol(el, "rw", (n.running_known ? n.running : "—") + " · " + (n.waiting_known ? n.waiting : "—"));
         setCol(el, "seen", ago(n.last_seen));
@@ -145,7 +146,7 @@
         if (av) { av.replaceChildren(pill(m.availability)); }
         setCol(el, "ready", m.ready + " / " + m.replicas);
         setCol(el, "nodes", String(m.nodes));
-        setCol(el, "tps", m.decode_known ? rate(m.tokens_per_second) : "—");
+        setCol(el, "tps", m.decode_known ? rate(m.tokens_per_second) + (m.legacy ? " (legacy)" : "") : "—");
         setCol(el, "queued", String(m.queued));
       });
     });
@@ -163,8 +164,8 @@
   function render(s) {
     if (s.tiles) {
       var t = s.tiles;
-      set("tokens_per_second", t.decode_known ? rate(t.tokens_per_second) : "—");
-      set("prompt_tokens_per_second", t.prompt_known ? rate(t.prompt_tokens_per_second) : "—");
+      set("tokens_per_second", t.decode_known ? rate(t.tokens_per_second) + (t.legacy ? " (legacy)" : "") : "—");
+      set("prompt_tokens_per_second", t.prompt_known ? rate(t.prompt_tokens_per_second) + (t.legacy ? " (legacy)" : "") : "—");
       set("in_flight", String(t.in_flight_local + t.in_flight_cloud));
       set("in_flight_local", String(t.in_flight_local));
       set("in_flight_cloud", String(t.in_flight_cloud));

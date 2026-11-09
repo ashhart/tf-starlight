@@ -65,11 +65,12 @@ var nodeCols = `n.id, n.name, n.status, n.pool, n.labels, n.max_classification, 
 		JOIN replicas r ON r.id = m.replica_id WHERE m.node_id = n.id AND m.state = 'ready' AND r.desired = 'running'),
 	(SELECT count(*) FROM replicas r WHERE r.node_id = n.id AND r.desired = 'running') + (SELECT count(*) FROM replica_members m
 		JOIN replicas r ON r.id = m.replica_id WHERE m.node_id = n.id AND r.desired = 'running'),
- (SELECT sum((r.live->>'tokens_per_second')::float8) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
- (SELECT sum((r.live->>'prompt_tokens_per_second')::float8) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
- (SELECT sum((r.live->>'running')::int) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
- (SELECT sum((r.live->>'waiting')::int) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
- (SELECT max((r.live->>'kv_usage')::float8) FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `)`
+ (SELECT ` + completeAggregate("r", "tokens_per_second", "float8", "sum") + ` FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT ` + completeAggregate("r", "prompt_tokens_per_second", "float8", "sum") + ` FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT ` + completeAggregate("r", "running", "int", "sum") + ` FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT ` + completeAggregate("r", "waiting", "int", "sum") + ` FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT ` + completeAggregate("r", "kv_usage", "float8", "max") + ` FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + `),
+ (SELECT EXISTS(SELECT 1 FROM replicas r WHERE r.node_id=n.id AND ` + freshLoad("r") + ` AND ` + legacyLoad("r") + `))`
 
 func scanNode(row interface{ Scan(...any) error }) (Node, error) {
 	var n Node
@@ -77,7 +78,7 @@ func scanNode(row interface{ Scan(...any) error }) (Node, error) {
 	var decode, prompt, kv *float64
 	var running, waiting *int
 	err := row.Scan(&n.ID, &n.Name, &n.Status, &n.Pool, &lbl, &n.MaxClass, &n.Address, &facts, &n.AgentVersion, &n.LastSeen, &n.CertNotAfter,
-		&n.Ready, &n.Replicas, &decode, &prompt, &running, &waiting, &kv)
+		&n.Ready, &n.Replicas, &decode, &prompt, &running, &waiting, &kv, &n.Live.Legacy)
 	if err != nil {
 		return n, notFound(err)
 	}

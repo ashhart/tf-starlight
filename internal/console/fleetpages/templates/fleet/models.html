@@ -11,7 +11,7 @@
 <td>{{.RoutePolicy}}</td>
 <td class="num" data-col="ready">{{$l.Ready}} / {{$l.Replicas}}</td>
 <td class="num" data-col="nodes">{{$l.Nodes}}</td>
-<td class="num" data-col="tps">{{if $l.DecodeKnown}}{{$p.Rate $l.TokensPerSecond}}{{else}}—{{end}}</td>
+<td class="num" data-col="tps">{{if $l.DecodeKnown}}{{$p.Rate $l.TokensPerSecond}}{{else}}—{{end}}{{if and $l.Legacy $l.DecodeKnown}} (legacy){{end}}</td>
 <td class="num" data-col="queued">{{$l.Queued}}</td>
 <td class="num">{{$l.CloudRoutes}}</td>
 <td class="num">{{.Grants}}</td>
