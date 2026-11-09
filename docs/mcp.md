@@ -121,7 +121,9 @@ or endpoint URLs. Once identity is established, ungranted tools and policy refus
 create content-free `mcp.deny` records with a status and attempt id. These records
 use a separate 1s context even if the client has disconnected or its body deadline
 has expired. A revoked key or failed membership resolution establishes no current
-identity and is counted with anonymous refusals.
+identity and is counted with anonymous refusals. A valid deployment key that
+authenticates but lacks this gateway's grant still causes one `mcp.deny` write per
+refusal.
 
 Refusals before identity is established, including bad Origin and non-POST requests,
 only increment six fixed counters. One worker per gateway writes an `mcp.refusals`
