@@ -140,9 +140,10 @@ func TestGovernedMCPRouteUsesFreshAuthorityAndSeparateAccounting(t *testing.T) {
 	}
 	app.MCP.Close()
 	var summaries int
-	var anonymous int
-	if err := pool.QueryRow(ctx, `SELECT count(*),coalesce(sum((details->'status_counts'->>'401')::int),0)
-        FROM audit_events WHERE action='mcp.refusals'`).Scan(&summaries, &anonymous); err != nil {
+	var anonymous401, anonymous403 int
+	if err := pool.QueryRow(ctx, `SELECT count(*),coalesce(sum((details->'status_counts'->>'401')::int),0),
+        coalesce(sum((details->'status_counts'->>'403')::int),0)
+        FROM audit_events WHERE action='mcp.refusals'`).Scan(&summaries, &anonymous401, &anonymous403); err != nil {
 		t.Fatal(err)
 	}
 	var inference, events, denials, attempts int
@@ -155,8 +156,9 @@ func TestGovernedMCPRouteUsesFreshAuthorityAndSeparateAccounting(t *testing.T) {
 		FROM audit_events WHERE action LIKE 'mcp.%'`).Scan(&events, &denials, &attempts, &details); err != nil {
 		t.Fatal(err)
 	}
-	if inference != 0 || events != 2 || denials != 9 || attempts != 10 || summaries != 1 || anonymous != 3 || strings.Contains(details, "private-argument") || strings.Contains(details, "private-result") || strings.Contains(details, key) || strings.Contains(details, "fixture-upstream") {
-		t.Fatal("tool accounting mixed inference or recorded content/credentials")
+	if inference != 0 || events != 2 || denials != 9 || attempts != 10 || summaries != 1 || anonymous401 != 2 || anonymous403 != 1 || strings.Contains(details, "private-argument") || strings.Contains(details, "private-result") || strings.Contains(details, key) || strings.Contains(details, "fixture-upstream") {
+		t.Fatalf("tool accounting mismatch: inference=%d begin/end=%d denials=%d attempts=%d summaries=%d anonymous401=%d anonymous403=%d",
+			inference, events, denials, attempts, summaries, anonymous401, anonymous403)
 	}
 	if _, err := audit.Verify(ctx, pool); err != nil {
 		t.Fatal(err)
