@@ -36,11 +36,15 @@ func TestRoutingShadowIsDefaultOffAndObservesTheActualGatewayPath(t *testing.T) 
 				t.Fatal(err)
 			}
 			var decisions float64
+			var tokenEstimates uint64
 			for _, family := range families {
 				if strings.HasPrefix(family.GetName(), "starlight_routing_shadow_") {
 					for _, metric := range family.Metric {
 						if family.GetName() == "starlight_routing_shadow_decisions_total" {
 							decisions += metric.GetCounter().GetValue()
+						}
+						if family.GetName() == "starlight_routing_shadow_token_error_tokens" {
+							tokenEstimates += metric.GetHistogram().GetSampleCount()
 						}
 						for _, label := range metric.Label {
 							if strings.Contains(label.GetValue(), "shadow-private-prompt") ||
@@ -57,6 +61,9 @@ func TestRoutingShadowIsDefaultOffAndObservesTheActualGatewayPath(t *testing.T) 
 			}
 			if decisions != want {
 				t.Fatalf("shadow=%v decisions=%v want=%v", enabled, decisions, want)
+			}
+			if tokenEstimates != uint64(2*want) {
+				t.Fatalf("shadow=%v token estimate samples=%d want=%d", enabled, tokenEstimates, uint64(2*want))
 			}
 		})
 	}
