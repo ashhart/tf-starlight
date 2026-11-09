@@ -21,8 +21,8 @@ fi
 [ -n "$sum" ] || { echo "TensorFold $version has no $platform archive with a SHA-256" >&2; exit 1; }
 archive=$(mktemp)
 trap 'rm -f "$archive"' EXIT
-# Four attempts, a 90-second retry budget and a 30-second deadline per transfer.
-curl -fsSL --retry 3 --retry-all-errors --retry-max-time 90 --connect-timeout 10 --max-time 30 \
+# Four attempts, a ten-minute retry budget and a five-minute deadline per transfer.
+curl -fsSL --retry 3 --retry-all-errors --retry-max-time 600 --connect-timeout 10 --max-time 300 \
   -o "$archive" "https://github.com/$repo/releases/download/v$version/$name"
 if command -v sha256sum > /dev/null; then got=$(sha256sum "$archive"); else got=$(shasum -a 256 "$archive"); fi
 [ "${got%% *}" = "$sum" ] || { echo "$name does not match SHA-256 $sum" >&2; exit 1; }
