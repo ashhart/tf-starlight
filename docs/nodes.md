@@ -231,3 +231,20 @@ starlight-node service status
 - Permits are single use: a replay cache rejects a request id seen before, until its permit expires.
 - A node whose identity Starlight refuses keeps its engines but receives no permits; Starlight answering `revoked` or `disabled`
   stops every engine.
+
+## Optional phase telemetry
+
+`starlight-node run --telemetry-endpoint http://127.0.0.1:4318/v1/traces` enables the node's phase producer and explicitly
+configured OTLP/HTTP JSON collector. An empty endpoint is the default and starts no exporter. The endpoint can also be
+set with `STARLIGHT_NODE_TELEMETRY_ENDPOINT`. Optional `--telemetry-bearer-token-file` reads a local token file, with
+`STARLIGHT_NODE_TELEMETRY_BEARER_TOKEN_FILE` as its environment alternative.
+
+`--telemetry-sample-per-million` defaults to 10,000, `--telemetry-queue` to 256, `--telemetry-batch` to 32 and
+`--telemetry-timeout` to one second. The node can downsample a received context; a sampled header cannot raise its local
+sampling threshold. Configure both gateway and node collectors for connected phase records. Older nodes continue
+forwarding supported trace headers but produce no new phase records.
+
+Only authenticated gateway traffic enters node tracing. The node records permit/acquire, engine response-header and
+engine relay intervals, propagating the same opaque trace to the engine HTTP call. These observations cover the engine's
+HTTP boundary. Internal scheduling, prefill, decode, GPU and rank phases remain unknown without engine-produced data.
+See [the contract and limits](telemetry.md) before enabling collection.

@@ -28,6 +28,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/node/service"
 	"github.com/ashhart/tf-starlight/internal/node/state"
 	"github.com/ashhart/tf-starlight/internal/node/syncer"
+	"github.com/ashhart/tf-starlight/internal/telemetry"
 )
 
 // Config is everything `starlight-node run` accepts.
@@ -47,6 +48,7 @@ type Config struct {
 	RankHost       string
 	Facts          func(context.Context) wire.Facts
 	Logger         *slog.Logger
+	Telemetry      telemetry.Options
 }
 
 // Run serves until ctx ends, then drains replicas before closing the listener.
@@ -55,6 +57,16 @@ func Run(ctx context.Context, cfg Config) error {
 	if log == nil {
 		log = slog.Default()
 	}
+	var offline, offlineKnown atomic.Bool
+	cfg.Telemetry.Component, cfg.Telemetry.Logger = telemetry.NodeComponent, log
+	if cfg.Telemetry.Endpoint != "" && !telemetry.LoopbackEndpoint(cfg.Telemetry.Endpoint) {
+		cfg.Telemetry.Allowed = func(context.Context) bool { return offlineKnown.Load() && !offline.Load() }
+	}
+	traces, err := telemetry.New(ctx, cfg.Telemetry)
+	if err != nil {
+		return err
+	}
+	defer traces.Close()
 	dir, err := state.Open(cfg.StateDir)
 	if err != nil {
 		return err
@@ -90,7 +102,6 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 	stager := &artifacts.Stager{Engine: bin, ModelsDir: models, HFHome: cfg.HFHome, HFEndpoint: cfg.HFEndpoint, Logger: log}
-	var offline atomic.Bool
 	changes := make(chan struct{}, 1)
 	sup, err := engine.New(engine.Config{Engine: bin, Root: replicas, Stager: stager, Offline: offline.Load, StartupTimeout: cfg.StartupTimeout,
 		DrainTimeout: cfg.DrainTimeout, Env: cfg.Env, Logger: log, OnChange: func() { poke(changes) }})
@@ -99,7 +110,7 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 	verifier := permit.NewVerifier(keys)
 	srv, ln, err := listen(cfg.Listen, creds, pool, id, &proxy.Server{NodeID: id.NodeID, Verifier: verifier, Replay: permit.NewReplay(),
-		Backend: proxy.Supervised{S: sup}, Transport: proxy.NewTransport(), Logger: log})
+		Backend: proxy.Supervised{S: sup}, Transport: proxy.NewTransport(), Logger: log, Telemetry: traces})
 	if err != nil {
 		return err
 	}
@@ -135,7 +146,7 @@ func Run(ctx context.Context, cfg Config) error {
 				f.RankHost = cfg.RankHost
 			}
 			return f
-		}, Address: addr, Offline: &offline,
+		}, Address: addr, Offline: &offline, OfflineKnown: &offlineKnown,
 		Changes: changes, Logger: log}
 	log.Info("starlight node running", "node", id.NodeID, "name", id.Name, "listen", ln.Addr().String(), "advertise", addr, "server", id.ServerURL)
 	syncDone := make(chan struct{})

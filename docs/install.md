@@ -87,6 +87,10 @@ overrides. Unknown keys are refused, so typos fail at start-up.
 | `metrics.bearer_token_file` | none | none | Require `Authorization: Bearer` on `/metrics` |
 | `metrics.stream_timings` | none | `false` | Observe upstream data, generated SSE output and its flush attempt; see [metrics](metrics.md#stream-observation-boundaries) |
 | `metrics.replica_observations` | none | `false` | Export bounded replica work and freshness gauges; see [metrics](metrics.md#replica-work-observations) |
+| `telemetry.endpoint` | none | empty | Explicit OTLP/HTTP JSON trace URL, including `/v1/traces`; see [phase telemetry](telemetry.md) |
+| `telemetry.sample_per_million` | none | `10000` | Locally sampled phase traces per million requests, 0 to 1,000,000 |
+| `telemetry.queue`, `telemetry.batch`, `telemetry.timeout` | none | `256`, `32`, `1s` | Fixed queue, batch and collector attempt limits |
+| `telemetry.bearer_token_file` | none | empty | Optional collector token file; its value is never a span attribute |
 | `log.level`, `log.format` | `STARLIGHT_LOG_LEVEL` | `info`, `json` | Structured logs on stderr |
 
 `metrics.replica_observations` selects only the Prometheus collector. Node wire negotiation, validated observation

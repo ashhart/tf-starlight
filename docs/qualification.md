@@ -268,6 +268,26 @@ others were dismissed on the Security tab, each with its reason:
 | Configuration as code | `internal/declare` | Strict parsing, a dry run equal to the apply, a second apply that changes nothing, a failure that leaves nothing behind |
 | Lean rules | `tools/leancheck` | Files under 600 lines, one-line comments |
 
+### Correlated phase telemetry
+
+The phase-telemetry fixtures exercise the real public gateway, admission/settlement and an enrolled node/fake engine.
+They verify the same server request ID across one parent-linked gateway/node trace, normal output/accounting and zero
+collector requests with the endpoint disabled or sampling set to zero. Prompt/tool/credential/identity canaries must not
+appear in the independently decoded collector payload. The decoder accepts only the fixed service/scope/span schema.
+
+Controlled Postgres locks delay preparation, admission and settlement. Controlled node acquire, response-header and body
+read delays must appear in their named local intervals. Stream fixtures check first-data/output/flush causal order.
+A wall-clock skew fixture keeps elapsed duration on the local monotonic clock. None derives network or processing time by
+subtracting different hosts' timestamps. Queue saturation, collector stalls/cancellation, partial rejection, bounded retry,
+oversized replies, token-file validation and redirects are exercised separately.
+
+`STARLIGHT_PHASE_TELEMETRY_OVERHEAD=1 go test -run '^TestPhaseTelemetryOverhead$' -count=1 -v ./internal/e2e` runs
+A-B-C-C-B-A profiles for disabled, one-percent sampled and full export. Each trial has the same code, fake-engine protocol,
+zero artificial service delay, fresh database/fleet, 30 warmups and 300 sequential measured requests. It reports p50/p95/mean
+client duration, collector requests, accepted spans and complete observed traces after quiescence. This is a single-host
+fixture with aggregate startup/cache/noise limitations, not a real-device or concurrent-production capacity measurement.
+Read exporter losses and trace coverage alongside timing. Source review and deployment-specific export budgets remain.
+
 ## Open gates
 
 Each gate needs equipment or accounts the automated suites do not have. Record the result, versions and date when one

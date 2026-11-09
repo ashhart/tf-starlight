@@ -57,6 +57,7 @@ func runCommand() *cli.Command {
 	return &cli.Command{Name: "run", Summary: "Serve assigned replicas until stopped.",
 		Flags: func(fs *flag.FlagSet) {
 			stateFlag(fs, &cfg.StateDir)
+			telemetryFlags(fs, &cfg.Telemetry)
 			fs.StringVar(&cfg.Listen, "listen", envOr("STARLIGHT_NODE_LISTEN", ":7443"), "gateway-facing mTLS listen address")
 			fs.StringVar(&cfg.Advertise, "advertise", os.Getenv("STARLIGHT_NODE_ADVERTISE"), "host:port gateways dial (default: hostname and listen port)")
 			fs.StringVar(&cfg.Engine, "engine", os.Getenv("STARLIGHT_NODE_ENGINE"), "TensorFold engine binary (default: tensorfold on PATH)")
