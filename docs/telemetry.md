@@ -97,6 +97,13 @@ check privacy. Separate tests cover wall-clock skew, slow/offline collectors, qu
 response bounds, redirect/token handling and disabled/zero-sampled behavior.
 
 The opt-in disabled/sampled/full profile is described in [qualification](qualification.md#correlated-phase-telemetry).
-It measures a sequential fake-engine path on one host. Review its latency and actual trace coverage together, then
+It measures a sequential fake-engine path on one host. The additional opt-in concurrent fixture runs with
+`STARLIGHT_PHASE_TELEMETRY_CONCURRENT=1 go test -count=1 -run '^TestConcurrentPhaseTelemetry' -v ./internal/e2e`.
+It uses 16 clients, 256 measured requests per arm, 16 warmups, a 32-slot fake engine and the default queue/batch settings.
+Disabled/one-percent/full arms run in A-B-C-C-B-A order, reporting latency, request rate, actual complete/partial trace
+coverage and gateway loss counters. A separate four-record queue case holds collector responses while the same traffic
+completes, checks explicit drops, then releases the collector and verifies recovery. Both check exact choices/usage,
+settlement counts, zero remaining leases and private-data canaries. This is controlled concurrent HTTP qualification,
+not real-engine capacity, full production traffic coverage or a deployment SLO. Review latency and trace coverage together, then
 measure the deployment's traffic and collector budget before choosing a sampling rate. It does not qualify a real engine,
 concurrent fleet load, internal engine phase coverage, per-team destinations or durable performance records.

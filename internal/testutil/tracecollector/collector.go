@@ -27,11 +27,26 @@ type Collector struct {
 	raw    []byte
 	err    error
 	posts  int
+	gate   <-chan struct{}
 }
 
 func New(t *testing.T) *Collector {
+	return newCollector(t, nil)
+}
+
+func NewBlocked(t *testing.T) (*Collector, func()) {
 	t.Helper()
-	c := &Collector{}
+	gate := make(chan struct{})
+	var once sync.Once
+	release := func() { once.Do(func() { close(gate) }) }
+	c := newCollector(t, gate)
+	t.Cleanup(release)
+	return c, release
+}
+
+func newCollector(t *testing.T, gate <-chan struct{}) *Collector {
+	t.Helper()
+	c := &Collector{gate: gate}
 	c.server = httptest.NewServer(http.HandlerFunc(c.receive))
 	t.Cleanup(c.server.Close)
 	return c
@@ -62,6 +77,13 @@ func (c *Collector) receive(w http.ResponseWriter, r *http.Request) {
 		c.raw = append(c.raw, b...)
 	}
 	c.mu.Unlock()
+	if c.gate != nil {
+		select {
+		case <-c.gate:
+		case <-r.Context().Done():
+			return
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
