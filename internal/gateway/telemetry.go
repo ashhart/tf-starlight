@@ -58,8 +58,8 @@ func traceResult(err error) telemetry.Result {
 	return telemetry.OK
 }
 
-func (g *Gateway) traceBoundaries(ctx context.Context, start time.Time, t streamTimes) {
-	if g.traces == nil {
+func (g *Gateway) traceBoundaries(ctx context.Context, start time.Time, t *streamTimes) {
+	if g.traces == nil || t == nil {
 		return
 	}
 	if t.data.seen {

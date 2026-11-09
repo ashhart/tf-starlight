@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ashhart/tf-starlight/internal/config"
 	"github.com/ashhart/tf-starlight/internal/testutil/tracecollector"
 )
 
@@ -22,7 +23,7 @@ func TestPhaseTelemetryOverhead(t *testing.T) {
 			var f *fleet
 			rate := 0
 			if mode == "disabled" {
-				f = startStarlight(t, nil)
+				f = startStarlight(t, func(c *config.Config) { c.Metrics.StreamTimings = true })
 				f.enrolWith(f.nodeURL, "profile-node", 1, nodeOptions{env: []string{"FAKE_ENGINE_DELAY_MS=0"}})
 			} else {
 				rate = 10000
