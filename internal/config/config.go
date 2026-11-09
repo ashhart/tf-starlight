@@ -40,6 +40,7 @@ type Config struct {
 	Identity       Identity `yaml:"identity"`
 	Sessions       Sessions `yaml:"sessions"`
 	Gateway        Gateway  `yaml:"gateway"`
+	MCP            MCP      `yaml:"mcp"`
 	MDNS           MDNS     `yaml:"mdns"`
 	Metrics        Metrics  `yaml:"metrics"`
 	Log            Log      `yaml:"log"`
@@ -214,6 +215,9 @@ func (c Config) Secure() bool {
 
 // Validate refuses configurations that would start insecurely or ambiguously.
 func (c Config) Validate() error {
+	if err := c.MCP.Validate(); err != nil {
+		return err
+	}
 	u, err := url.Parse(c.PublicURL)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.Path != "" && u.Path != "/" {
 		return fmt.Errorf("public_url must be an absolute http(s) origin without a path, got %q", c.PublicURL)

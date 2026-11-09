@@ -34,6 +34,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/identity/scim"
 	"github.com/ashhart/tf-starlight/internal/identity/session"
 	"github.com/ashhart/tf-starlight/internal/ids"
+	"github.com/ashhart/tf-starlight/internal/mcpgateway"
 	"github.com/ashhart/tf-starlight/internal/metrics"
 	"github.com/ashhart/tf-starlight/internal/plans"
 	"github.com/ashhart/tf-starlight/internal/providers"
@@ -59,6 +60,7 @@ type Starlight struct {
 	Sessions *session.Manager
 	Pages    *web.Renderer
 	Gateway  *gateway.Gateway
+	MCP      *mcpgateway.Handler
 	Control  *control.Server
 	Tasks    *tasks.Service
 	Plans    *plans.Service
@@ -202,7 +204,7 @@ func (t *Starlight) build() error {
 	}
 	identitypages.Register(t.Console)
 	fleetpages.Register(t.Console, fleetpages.WithPlans(t.Plans))
-	return nil
+	return t.buildMCP(proxies)
 }
 
 // flush drops this instance's caches after an administrative edit; other instances converge within their TTLs.
@@ -249,6 +251,9 @@ func (t *Starlight) Handler() http.Handler {
 		t.Gateway.Register(mux)
 		t.Tasks.Register(mux)
 		t.Plans.Register(mux)
+		if t.MCP != nil {
+			mux.Handle("/mcp", t.MCP)
+		}
 	}
 	if t.Config.HasRole("console") {
 		issuer := &oauth.Issuer{Pool: t.Pool, Life: oauth.Lifetimes{Access: t.Config.Sessions.AccessTTL.Duration,
@@ -292,7 +297,12 @@ func (t *Starlight) ready(w http.ResponseWriter, r *http.Request) {
 }
 
 // Close releases the pool.
-func (t *Starlight) Close() { t.Pool.Close() }
+func (t *Starlight) Close() {
+	if t.MCP != nil {
+		t.MCP.Close()
+	}
+	t.Pool.Close()
+}
 
 func hostname() string {
 	h, _ := os.Hostname()
