@@ -86,7 +86,7 @@ func rpcEvent(block []byte) []byte {
 }
 
 // relayEvents forwards validated request-scoped messages and stops after one final response.
-func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, expected request, allowed map[string]bool, maxBytes int64, maxFrame int) error {
+func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, expected request, allowed map[string]bool, maxBytes int64, maxFrame int) (bool, error) {
 	r := eventReader{reader: bufio.NewReaderSize(input, 32<<10), remaining: maxBytes, maxFrame: maxFrame}
 	started := false
 	lastProgress := -1.0
@@ -94,9 +94,9 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 		block, err := r.next()
 		if err != nil {
 			if ctx.Err() != nil {
-				return ctx.Err()
+				return started, ctx.Err()
 			}
-			return errors.New("MCP upstream ended before a final response")
+			return started, errors.New("MCP upstream ended before a final response")
 		}
 		data := rpcEvent(block)
 		var wire []byte
@@ -106,7 +106,7 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 		} else {
 			data, final, err = response(data, expected, allowed, maxFrame)
 			if err != nil {
-				return err
+				return started, err
 			}
 			if !final {
 				var update struct {
@@ -116,7 +116,7 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 				}
 				_ = json.Unmarshal(data, &update)
 				if update.Params.Progress <= lastProgress {
-					return errors.New("MCP progress did not increase")
+					return started, errors.New("MCP progress did not increase")
 				}
 				lastProgress = update.Params.Progress
 			}
@@ -124,7 +124,7 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 			wire = append(wire, '\n', '\n')
 		}
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return started, ctx.Err()
 		}
 		if !started {
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -134,13 +134,13 @@ func relayEvents(ctx context.Context, w http.ResponseWriter, input io.Reader, ex
 			started = true
 		}
 		if _, err := w.Write(wire); err != nil {
-			return errors.New("MCP client write failed")
+			return started, errors.New("MCP client write failed")
 		}
 		if err := http.NewResponseController(w).Flush(); err != nil {
-			return errors.New("MCP client flush failed")
+			return started, errors.New("MCP client flush failed")
 		}
 		if final {
-			return nil
+			return started, nil
 		}
 	}
 }

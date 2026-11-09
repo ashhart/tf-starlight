@@ -77,6 +77,7 @@ func (h *Handler) Close() { h.upstream.HTTP.CloseIdleConnections() }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if origins := r.Header.Values("Origin"); len(origins) != 0 && (len(origins) != 1 || origins[0] != h.origin) {
 		writeFailure(w, nil, &failure{403, -32600, "Origin is not permitted"})
 		return
@@ -161,10 +162,9 @@ func (h *Handler) forward(w http.ResponseWriter, r *http.Request, req request, a
 	}
 	kind, _, err := mime.ParseMediaType(x.response.Header.Get("Content-Type"))
 	if err == nil && kind == "text/event-stream" {
-		state := &streamWriter{ResponseWriter: w}
-		err = relayEvents(r.Context(), state, x.response.Body, req, h.allowed, h.upstream.MaxBytes, h.upstream.MaxFrame)
-		if err != nil {
-			if !state.started {
+		started, relayErr := relayEvents(r.Context(), w, x.response.Body, req, h.allowed, h.upstream.MaxBytes, h.upstream.MaxFrame)
+		if relayErr != nil {
+			if !started {
 				writeFailure(w, req.ID, &failure{502, -32000, "Tool upstream stream did not complete"})
 			}
 			return

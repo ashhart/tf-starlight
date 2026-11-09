@@ -12,7 +12,7 @@ func TestBoundedStreamForwardsOneFinalResponse(t *testing.T) {
 	final := `{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","content":[]}}`
 	body := ": ping\n\ndata: " + final + "\n\ndata: " + final + "\n\n"
 	w := httptest.NewRecorder()
-	if err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 1<<20, 64<<10); err != nil {
+	if _, err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 1<<20, 64<<10); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Count(w.Body.String(), `"resultType":"complete"`) != 1 || w.Header().Get("Cache-Control") != "no-store" {
@@ -28,14 +28,14 @@ func TestStreamLimitsAndTruncatedOrUnsolicitedRepliesFailClosed(t *testing.T) {
 		": " + strings.Repeat("x", 2048) + "\n\n",
 	} {
 		w := httptest.NewRecorder()
-		if err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 4096, 1024); err == nil {
+		if _, err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 4096, 1024); err == nil {
 			t.Fatal("unqualified stream passed")
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	w := httptest.NewRecorder()
-	err := relayEvents(ctx, w, strings.NewReader(": keepalive\n\n"), request{ID: json.RawMessage(`1`)}, nil, 4096, 1024)
+	_, err := relayEvents(ctx, w, strings.NewReader(": keepalive\n\n"), request{ID: json.RawMessage(`1`)}, nil, 4096, 1024)
 	if err == nil || w.Body.Len() != 0 {
 		t.Fatal("cancelled stream wrote another message")
 	}
@@ -47,7 +47,7 @@ func TestProgressStreamCannotRepeatOrRegressItsCounter(t *testing.T) {
 	for _, second := range []string{progress, strings.Replace(progress, `"progress":1`, `"progress":0`, 1)} {
 		body := "data: " + progress + "\n\ndata: " + second + "\n\ndata: " + final + "\n\n"
 		w := httptest.NewRecorder()
-		err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call", progress: json.RawMessage(`"job"`)}, nil, 4096, 1024)
+		_, err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call", progress: json.RawMessage(`"job"`)}, nil, 4096, 1024)
 		if err == nil || strings.Count(w.Body.String(), "notifications/progress") != 1 || strings.Contains(w.Body.String(), "resultType") {
 			t.Fatal("invalid progress stream completed")
 		}
@@ -59,7 +59,7 @@ func TestSSEAcceptsStandardLineEndingsAndOnlyTheInitialBOM(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n", "\r"} {
 		body := "\xef\xbb\xbf: keepalive" + ending + ending + "data: " + final + ending + ending
 		w := httptest.NewRecorder()
-		if err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 4096, 1024); err != nil || !strings.Contains(w.Body.String(), "resultType") {
+		if _, err := relayEvents(context.Background(), w, strings.NewReader(body), request{ID: json.RawMessage(`1`), Method: "tools/call"}, nil, 4096, 1024); err != nil || !strings.Contains(w.Body.String(), "resultType") {
 			t.Fatalf("valid SSE ending %q refused: %v", ending, err)
 		}
 	}

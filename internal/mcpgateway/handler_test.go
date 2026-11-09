@@ -3,6 +3,7 @@ package mcpgateway
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -142,5 +143,40 @@ func TestHandlerDisconnectCancelsItsSingleUpstreamCall(t *testing.T) {
 	}
 	if calls.Load() != 1 {
 		t.Fatal("cancelled call retried")
+	}
+}
+
+func TestRepliesDeclareDataTypesAndPreserveHTMLLikeToolText(t *testing.T) {
+	const text = `<script>alert("fixture")</script>`
+	for _, kind := range []string{"application/json", "text/event-stream"} {
+		t.Run(kind, func(t *testing.T) {
+			h, _, _ := handlerFixture(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				body, _ := encodeJSON(map[string]any{"jsonrpc": "2.0", "id": 1, "result": map[string]any{"resultType": "complete", "content": []map[string]string{{"type": "text", "text": text}}}})
+				w.Header().Set("Content-Type", kind)
+				if kind == "text/event-stream" {
+					_, _ = io.WriteString(w, "data: ")
+					body = append(body, '\n', '\n')
+				}
+				_, _ = w.Write(body)
+			}))
+			w := callHandler(h, "tools/call", nil)
+			if w.Code != 200 || w.Header().Get("Content-Type") != kind || w.Header().Get("X-Content-Type-Options") != "nosniff" {
+				t.Fatal("tool data lost its explicit non-HTML response type")
+			}
+			raw := w.Body.Bytes()
+			if kind == "text/event-stream" {
+				raw = rpcEvent(raw)
+			}
+			var decoded struct {
+				Result struct {
+					Content []struct {
+						Text string `json:"text"`
+					} `json:"content"`
+				} `json:"result"`
+			}
+			if json.Unmarshal(raw, &decoded) != nil || len(decoded.Result.Content) != 1 || decoded.Result.Content[0].Text != text {
+				t.Fatal("tool JSON text was changed by output encoding")
+			}
+		})
 	}
 }

@@ -32,18 +32,3 @@ func writeDiscovery(w http.ResponseWriter, id json.RawMessage) {
 		"_meta": map[string]any{"io.modelcontextprotocol/serverInfo": map[string]string{"name": "Starlight governed tools", "version": "1"}},
 		"ttlMs": 0, "cacheScope": "private"}})
 }
-
-type streamWriter struct {
-	http.ResponseWriter
-	started bool
-}
-
-func (w *streamWriter) WriteHeader(status int) {
-	w.started = true
-	w.ResponseWriter.WriteHeader(status)
-}
-func (w *streamWriter) Write(data []byte) (int, error) {
-	w.started = true
-	return w.ResponseWriter.Write(data)
-}
-func (w *streamWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
