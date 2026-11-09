@@ -25,13 +25,27 @@ func TestStreamObservationBudgetLeavesUnmatchedOutputUnknownAndPreservesBytes(t 
 			times := streamTimes{start: time.Now()}
 			w := httptest.NewRecorder()
 			stream(context.Background(), w, strings.NewReader(body), &meter{protocol: providers.ChatCompletions}, false, httpx.OpenAI, &times)
-			if times.output.seen || !times.stopped || times.examinedBytes > maxOutputInspectionBytes || times.events > maxOutputInspectionEvents {
+			if times.output.seen || !times.stopped || times.examinedBytes > maxOutputInspectionBytes || times.dataEvents > maxOutputInspectionEvents {
 				t.Fatalf("unbounded or invented observation: %+v", times)
 			}
 			if w.Body.String() != body {
 				t.Fatal("inspection budget changed forwarded bytes")
 			}
 		})
+	}
+}
+
+func TestHeartbeatEventsDoNotExhaustTheDataEventBudget(t *testing.T) {
+	prefix := strings.Repeat(": ping\n\n", maxOutputInspectionEvents)
+	body := prefix + "data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n"
+	times := streamTimes{start: time.Now()}
+	w := httptest.NewRecorder()
+	stream(context.Background(), w, strings.NewReader(body), &meter{protocol: providers.ChatCompletions}, false, httpx.OpenAI, &times)
+	if !times.output.seen || times.kind != textPayload || times.dataEvents != 1 || times.events != maxOutputInspectionEvents+1 {
+		t.Fatalf("heartbeats consumed the payload budget or changed the wire event index: %+v", times)
+	}
+	if w.Body.String() != body {
+		t.Fatal("heartbeat observation changed the forwarded bytes")
 	}
 }
 

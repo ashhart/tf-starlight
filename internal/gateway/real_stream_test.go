@@ -213,9 +213,8 @@ func runStreamGate(base, model, key string, c streamGateCase, wrappers ...func(h
 	if times == nil || !times.data.seen || !times.output.seen || !times.flush.seen || times.flushError || outputAt.IsZero() {
 		return receipt, errors.New("missing model output or successful flush observation")
 	}
-	if got.out.firstByte > times.data.elapsed || times.data.elapsed > times.output.elapsed || times.output.elapsed > times.flush.elapsed ||
-		outputAt.Before(got.start.Add(times.output.elapsed)) {
-		return receipt, errors.New("gateway and client clock order is invalid")
+	if err := validateStreamGateOrder(got.start, got.out.firstByte, times, outputAt); err != nil {
+		return receipt, err
 	}
 	if times.events != receipt.ClientOutputEvent || string(times.kind) != receipt.ClientPayload {
 		return receipt, errors.New("gateway and independent client disagree on the first output event")

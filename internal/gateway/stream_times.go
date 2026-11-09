@@ -26,6 +26,7 @@ type streamTimes struct {
 	kind          payloadKind
 	flushError    bool
 	events        int
+	dataEvents    int
 	examinedBytes int
 	stopped       bool
 }
@@ -41,12 +42,21 @@ func (t *streamTimes) event(protocol string, block []byte) bool {
 	if t == nil || t.output.seen || t.stopped {
 		return false
 	}
-	if t.events >= maxOutputInspectionEvents || len(block) > maxOutputInspectionBytes-t.examinedBytes {
+	if len(block) > maxOutputInspectionBytes-t.examinedBytes {
+		t.stopped = true
+		return false
+	}
+	t.examinedBytes += len(block)
+	hasData := bytes.HasPrefix(block, []byte("data:")) || bytes.Contains(block, []byte("\ndata:"))
+	if hasData && t.dataEvents >= maxOutputInspectionEvents {
 		t.stopped = true
 		return false
 	}
 	t.events++
-	t.examinedBytes += len(block)
+	if !hasData {
+		return false
+	}
+	t.dataEvents++
 	data := eventData(block)
 	if bytes.Equal(data, []byte("[DONE]")) {
 		t.stopped = true
