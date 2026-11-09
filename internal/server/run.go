@@ -51,7 +51,7 @@ func (t *Starlight) Run(ctx context.Context) error {
 	}
 	if t.Config.HasRole("control") {
 		bg(t.Control.Listen)
-		ctrl := &scheduler.Controller{Pool: t.Pool, Instance: t.Instance, Log: t.Log,
+		ctrl := &scheduler.Controller{Pool: t.Pool, Instance: t.Instance, Log: t.Log, Accounting: t.Accounting,
 			Hourly: []func(context.Context) error{func(ctx context.Context) error { return login.Cleanup(ctx, t.Pool) }}}
 		elector := &scheduler.Elector{Pool: t.Pool, Instance: t.Instance}
 		bg(func(ctx context.Context) {

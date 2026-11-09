@@ -106,6 +106,50 @@ replica must still be ready on its current revision, on an active node cleared f
 for a rank group every member's node must be active, recently seen and cleared too. A provider route must still be
 enabled, its provider enabled and cleared for the classification, and its `max_concurrency` is read there and then.
 
+## Shadow routing
+
+Set `gateway.routing_shadow: true` to compare the existing choice with a deterministic advisory score. It defaults to
+false. The actual picker, eligibility checks, queue priority, reservations and failover stay the same. Disable the flag
+and restart the gateway to stop comparisons. No inference request is duplicated for this feature.
+
+The score is estimated prompt tokens divided by observed prompt throughput, plus the output-token limit divided by
+observed decode throughput. Existing outstanding token reservations add effort at the slower phase rate because their
+remaining prompt/decode split is unknown. These are heuristics for comparison, not completion-time guarantees. They
+use the gateway's existing prompt estimate and output reservation, so estimate error includes those approximations.
+There is no cache credit without verified inventory. Affinity can outperform this score on a warm prefix.
+
+Only the same eligible local candidates enter the comparison, including project isolation, revision, classification,
+pins and explicit exclusions. Every candidate with free capacity must have valid measurements from its current engine
+generation, a positive measured rate for each needed phase, known running/waiting counts and known reservations.
+Measurements expire at 15 seconds and future timestamps remain unavailable. Untracked engine work, malformed or missing
+measurements and more than 128 eligible local candidates produce a named unavailable result. Unknown comparisons carry
+no proposed target or numeric score. Cloud targets are reported separately and receive no local-effort comparison.
+
+Shadow metadata is read with the candidate query only when enabled. Each stored measurement is capped at 4 KiB before
+extracting only the fixed phase fields. Unknown fields are not transferred. The exact pin, exclusion and single-target
+filters apply before the comparison cap; above that cap no metadata or reservation sums are fetched. Reservation sums
+outside the exact integer bound remain unknown. The real candidate set is never truncated for the shadow cap.
+The extra query work grows with the eligible candidate set; measure gateway/database overhead on your
+fleet before leaving the flag enabled. The optional Prometheus replica exporter is independent of this flag.
+
+The opt-in profile `STARLIGHT_SHADOW_OVERHEAD=1 go test -p 1 -count=1 -run '^TestRoutingShadowOverhead$' -v ./internal/admission ./internal/e2e`
+compares flag-off/on in matched ABBA order. Admission cases use 1, 32, 128 and 129 eligible replicas with actual occupied
+leases and fresh, stale, missing or oversized observations. Observations refresh outside timing every 25 requests.
+Reports include admission and full-cycle p50/p95; tests require identical actual affinity and exact usage/reservation/lease
+effects. A separate gateway/node/fake-engine case verifies choices, usage, route and configured comparison counts.
+These sequential controlled fixtures measure flag overhead, not concurrent real-device capacity or routing gain.
+
+The actual successful lease carries the decision through settlement. Metrics record comparison availability,
+agreement/disagreement and both effort scores without target IDs or request content. Only successful attempts with
+observed usage contribute actual admit-to-finished-relay time divided by the actual route's score. The outer admission
+queue and settlement SQL are outside that elapsed interval. No counterfactual completion time or goodput is measured by
+live shadow scores. See [metrics](metrics.md#shadow-routing-observations).
+
+The [controlled replay tool](../tools/routing-replay/README.md) compares matched synthetic traces with explicit assumed
+rates, a FIFO queue and a one-entry simulated cache. It reports SLO goodput, p95 latency/wait, finite starvation-threshold
+violations and estimation error, including a hot-prefix regression control. It supplies no real-device gain evidence.
+Changing live policy requires a separate reviewed change, matched device evidence and a rollback to the existing picker.
+
 ## Failover
 
 A request is retried on another target, at most three attempts in all, only when it provably never started:

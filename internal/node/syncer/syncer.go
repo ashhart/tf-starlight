@@ -18,21 +18,22 @@ import (
 
 // Syncer is the node's control loop.
 type Syncer struct {
-	Client     *controlclient.Client
-	Sup        *engine.Supervisor
-	Verifier   *permit.Verifier
-	Dir        *state.Dir
-	Identity   state.Identity
-	Creds      *state.Creds
-	Stager     *artifacts.Stager
-	Facts      func(context.Context) wire.Facts
-	Address    string
-	Offline    *atomic.Bool
-	Changes    <-chan struct{}
-	Logger     *slog.Logger
-	Backoff    func(int) time.Duration
-	FactsEvery time.Duration
-	Debounce   time.Duration
+	Client       *controlclient.Client
+	Sup          *engine.Supervisor
+	Verifier     *permit.Verifier
+	Dir          *state.Dir
+	Identity     state.Identity
+	Creds        *state.Creds
+	Stager       *artifacts.Stager
+	Facts        func(context.Context) wire.Facts
+	Address      string
+	Offline      *atomic.Bool
+	OfflineKnown *atomic.Bool
+	Changes      <-chan struct{}
+	Logger       *slog.Logger
+	Backoff      func(int) time.Duration
+	FactsEvery   time.Duration
+	Debounce     time.Duration
 }
 
 // Status is what `starlight-node status` shows.
@@ -140,6 +141,9 @@ func (s *Syncer) apply(resp wire.SyncResponse) {
 		s.Logger.Warn("could not persist permit keys", "error", err)
 	}
 	s.Offline.Store(resp.Offline)
+	if s.OfflineKnown != nil {
+		s.OfflineKnown.Store(true)
+	}
 	switch resp.NodeStatus {
 	case "revoked", "disabled":
 		s.Sup.Apply(nil)

@@ -25,6 +25,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/levels"
 	"github.com/ashhart/tf-starlight/internal/metrics"
 	"github.com/ashhart/tf-starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/routing"
 )
 
 // Gateway serves /v1 inference under authentication, policy, admission and accounting.
@@ -43,6 +44,7 @@ type Gateway struct {
 	Log           *slog.Logger
 	limitsMu      sync.Mutex
 	limits        map[string]cachedLimits
+	traces        *phaseTracer
 }
 
 // bodyDeadline bounds how long a client may take to send its request body.
@@ -96,9 +98,12 @@ type call struct {
 func (g *Gateway) infer(protocol, enginePath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		r, requestTrace, preparation := g.traceRequest(r, start)
+		defer requestTrace.End(traceUnset)
 		rc := http.NewResponseController(w)
 		_ = rc.SetReadDeadline(start.Add(bodyDeadline))
 		c, err := g.prepare(r, protocol, enginePath)
+		preparation.End(traceResult(err))
 		_ = rc.SetReadDeadline(time.Time{})
 		if err != nil {
 			g.refuse(w, dialectFor(protocol), err)
@@ -259,6 +264,9 @@ func (g *Gateway) admissionRequest(ctx context.Context, r *http.Request, c *call
 		Micros: micros, Affinity: c.info.Affinity, QueueUntil: time.Now().Add(wait), RunFor: g.Config.RequestTimeout.Duration, Only: c.req.Only,
 		Isolated: c.project.Isolated,
 		Who:      admission.Who{PrincipalType: string(p.Type), PrincipalID: p.ID, ProjectID: p.ProjectID, Client: c.client}}
+	if g.Config.RoutingShadow {
+		c.req.ShadowWork = &routing.Work{Prompt: c.info.Estimate, Completion: out}
+	}
 	return nil
 }
 

@@ -172,6 +172,40 @@ Run the existing process/restore drills and the real fleet/load gate for those d
 The lost-authority request has a 10s context deadline, allowing race instrumentation and scheduling overhead while still
 requiring a 503 refusal with its retry hint. This test bound is not a production response-time objective.
 
+### Terminal accounting qualification
+
+The terminal-accounting fixtures exercise actual admission, reaping and settlement, with separate late records and no
+additional budget effect. They cover repeated/conflicting reports, original authority checks, concurrent reporters,
+settlement/reaper lock order, rollback of failed usage/audit inserts, immutable evidence and ordered audit linkage.
+Controlled aged copies of captured evidence test seven-day first reports, 90-day late retention, pending-audit preservation
+and unknown replay after pruning. Export fixtures check bounded rows, blank unknown charges and actual console permissions.
+
+`TestTerminalMigrationPreservesAnExistingLeaseAndLegacyVoidCall` builds schema 10 from its unchanged migrations before
+applying schema 11. It checks a pre-existing lease and the old void SQL contract. A separate migration failure fixture
+checks transaction rollback and successful retry. These tests do not establish that arbitrary older binaries can restart
+against schema 11; the release gate must separately verify their expected newer-schema refusal.
+
+The opt-in `TestTerminalAccountingSurvivesDatabaseAndWorkerRestart` uses the same isolated Postgres17 helper as the
+promotion drill. It acknowledges a terminal charge and late observation, crashes/restarts its own primary, then starts
+two fresh worker processes. They replay the observation and drain/verify one terminal and one late audit event, with one
+budget effect. It requires `STARLIGHT_POSTGRES_DRILL=1` and matching Postgres17 tools on PATH. It is a bounded local fixture,
+not a production recovery SLO or a claim to recover work a crashed gateway never reported.
+
+`STARLIGHT_SETTLEMENT_LATENCY=1` enables `TestSettlementLatencySample`: five samples of 300 normal observed settlements.
+Compare the identical fixture on the landed baseline and candidate under the same reserved host, without the race
+instrumentation. It measures gateway-to-database settlement latency; it does not establish production throughput or disk
+retention capacity. Keep measured source hashes, results and failed attempts separate in the qualification receipt.
+
+The review regression fixtures also cover mixed legacy unknown flags and charge constraints, poisoned-audit backoff with
+healthy progress, ordinary audit writers racing accounting linkage, prune/late expiry locks and unrelated live settlement,
+retryable migration lock timeout, bounded health/log error metadata and complete keyset export traversal. The maintenance
+loop catches up across multiple small transactions within its required deadline.
+
+`STARLIGHT_ACCOUNTING_CAPACITY=1` enables a dedicated 45-second controlled capacity fixture. It retains 50,001 unexpired
+captured-shape rows and offers 200 expired receipts/s while cleanup runs every 15 seconds with the default two-second
+budget. It records produced rows, sweep deletions, batches, elapsed time and residual backlog. This does not qualify a
+full seven-day 200/s fleet history, about 121 million receipts, or arbitrary storage and concurrent production load.
+
 ### Windows
 
 CI's `windows` job runs on the hosted Windows Server 2025 runner, with Go 1.27.3 and its Postgres 17.11:
@@ -268,6 +302,26 @@ others were dismissed on the Security tab, each with its reason:
 | Configuration as code | `internal/declare` | Strict parsing, a dry run equal to the apply, a second apply that changes nothing, a failure that leaves nothing behind |
 | Lean rules | `tools/leancheck` | Files under 600 lines, one-line comments |
 
+### Correlated phase telemetry
+
+The phase-telemetry fixtures exercise the real public gateway, admission/settlement and an enrolled node/fake engine.
+They verify the same server request ID across one parent-linked gateway/node trace, normal output/accounting and zero
+collector requests with the endpoint disabled or sampling set to zero. Prompt/tool/credential/identity canaries must not
+appear in the independently decoded collector payload. The decoder accepts only the fixed service/scope/span schema.
+
+Controlled Postgres locks delay preparation, admission and settlement. Controlled node acquire, response-header and body
+read delays must appear in their named local intervals. Stream fixtures check first-data/output/flush causal order.
+A wall-clock skew fixture keeps elapsed duration on the local monotonic clock. None derives network or processing time by
+subtracting different hosts' timestamps. Queue saturation, collector stalls/cancellation, partial rejection, bounded retry,
+oversized replies, token-file validation and redirects are exercised separately.
+
+`STARLIGHT_PHASE_TELEMETRY_OVERHEAD=1 go test -run '^TestPhaseTelemetryOverhead$' -count=1 -v ./internal/e2e` runs
+A-B-C-C-B-A profiles for disabled, one-percent sampled and full export. Each trial has the same code, fake-engine protocol,
+zero artificial service delay, fresh database/fleet, 30 warmups and 300 sequential measured requests. It reports p50/p95/mean
+client duration, collector requests, accepted spans and complete observed traces after quiescence. This is a single-host
+fixture with aggregate startup/cache/noise limitations, not a real-device or concurrent-production capacity measurement.
+Read exporter losses and trace coverage alongside timing. Source review and deployment-specific export budgets remain.
+
 ## Open gates
 
 Each gate needs equipment or accounts the automated suites do not have. Record the result, versions and date when one
@@ -350,3 +404,42 @@ have no Docker, and run the node image on a GPU, which the NVIDIA gate above cov
 
 Commission a review and penetration test of the gateway, identity, node and console surfaces before production use; see
 [security.md](security.md#residual-risks-and-open-review-items).
+
+### Shadow routing qualification
+
+`TestShadowRoutingKeepsAffinityAndOneBudgetEffect` uses real Postgres admission with injected measured-shape samples.
+It requires the same actual affinity choice with the flag off/on, an advisory disagreement on unequal rates, and one
+budget/usage effect per lease. Other admission fixtures cover classification eligibility and missing, stale, malformed,
+oversized or generation-mismatched observations. Pure evaluator cases cover phase-heavy work, outstanding reservations,
+ties, invalid bounds and untracked engine work. Metrics fixtures separate numeric estimates from qualified actual-route
+error samples and keep target/request identities out of labels. The gateway fixture exercises the config flag through
+actual serving with an enrolled fake engine. These fixtures establish behavior under declared inputs, not device rates.
+
+`go run ./tools/routing-replay -input tools/routing-replay/testdata/mixed.json` reports matched synthetic policy arms.
+The supplied mixed, unequal-cold, hot-prefix and stale traces declare their assumed rates and cache rules. Positive and
+negative controls must be retained together. They record SLO goodput, p95 latency/queue wait, finite starvation-threshold
+violations and estimation error. The hot-prefix control exposes missing cache credit; the stale control must match the
+baseline with unknown error. See the [tool contract](../tools/routing-replay/README.md) for bounds and definitions.
+
+No live promotion follows from a lower advisory score or synthetic gain. Measure flag-off/on gateway/database overhead,
+then gather matched mixed-length/hot-cold/unequal-device traffic with exact engine/model identity, generation/freshness,
+usage coverage and actual client completion receipts. A reviewed policy change requires a demonstrated device gain
+without a quality or fairness regression and an immediate return to the existing picker. This change leaves policy
+selection and model outputs with the current implementation.
+
+## Combined audit follow-up qualification
+
+`go test -race -count=1 -timeout=4m -run '^TestAuditFollowupsPreserveCombinedServingAndAccounting$' -v ./internal/e2e`
+compares disabled, shadow-only, tracing-only and both-enabled configurations.
+Each arm sends one warmup and 64 requests from eight clients through two enrolled
+nodes with fake engines and explicitly injected synthetic phase observations.
+Choices and observed usage must match across arms. Every request must have one
+matching settled terminal receipt, and retrying completed terminal reports must
+leave charges and usage counts unchanged. No active lease or late-usage row may
+remain. Enabled shadow decisions and complete 11-span nonstreaming traces are
+checked alongside strict collector/privacy and fixed metric-label checks.
+
+This fixture qualifies the selected combined source tree only. It does not
+approve any constituent PR, measure device inference, establish production
+overhead, promote routing or qualify a deployment/recovery objective. Repeat it
+and the full matrix if a selected head or base changes.

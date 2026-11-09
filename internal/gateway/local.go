@@ -18,6 +18,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/control/wire"
 	"github.com/ashhart/tf-starlight/internal/crypto/permit"
 	"github.com/ashhart/tf-starlight/internal/crypto/pki"
+	"github.com/ashhart/tf-starlight/internal/telemetry"
 )
 
 // Nodes dispatches to replicas over mTLS, naming each node by SPIFFE ID and carrying a fresh permit.
@@ -93,6 +94,7 @@ func (n *Nodes) Do(ctx context.Context, l *admission.Lease, method, path string,
 		return d, err
 	}
 	req.Header.Set(wire.PermitHeader, tok)
+	telemetry.Inject(ctx, req.Header)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	d.Resp, err = n.client(l.Target.NodeID).Do(req)

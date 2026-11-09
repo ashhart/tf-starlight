@@ -137,6 +137,10 @@ func (a *Admitter) attempt(ctx context.Context, req Request, e *entry, look bool
 	for _, t := range preferred(req, local, cloud) {
 		l, outranked, err := a.claim(ctx, req, e, t)
 		if err != nil || l != nil {
+			if l != nil && req.ShadowWork != nil {
+				decision := shadowDecision(req, local, l.Target, time.Now())
+				l.Shadow = &decision
+			}
 			return l, all, false, err
 		}
 		owed = owed || outranked

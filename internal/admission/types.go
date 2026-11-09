@@ -9,6 +9,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/authn"
 	"github.com/ashhart/tf-starlight/internal/catalog"
 	"github.com/ashhart/tf-starlight/internal/levels"
+	"github.com/ashhart/tf-starlight/internal/routing"
 )
 
 // Scope is a concurrency limit keyed by what it counts.
@@ -47,6 +48,7 @@ type Request struct {
 	RunFor     time.Duration
 	Who        Who
 	Isolated   bool
+	ShadowWork *routing.Work
 	// Retry marks a failover attempt, which skips requests_per_minute because the first attempt counted the request.
 	Retry bool
 }
@@ -79,6 +81,7 @@ type Lease struct {
 	Target   Target
 	Queued   time.Duration
 	Admitted time.Time
+	Shadow   *routing.Decision
 	req      Request
 }
 

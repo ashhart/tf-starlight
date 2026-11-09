@@ -57,10 +57,28 @@ jobs:
         run: go vet ./...
       - name: lean check
         run: go run ./tools/leancheck .
+      - name: combined shadow, tracing and terminal-accounting qualification
+        run: go test -race -count=1 -timeout=4m -run '^TestAuditFollowupsPreserveCombinedServingAndAccounting$' -v ./internal/e2e
+      - name: shadow metadata payload movement regression
+        run: go test -count=1 -run '^TestUnavailableShadowSnapshotAvoidsWideWindow$' -v ./internal/admission
+      - name: matched shadow admission and gateway overhead profiles
+        run: STARLIGHT_SHADOW_OVERHEAD=1 go test -p 1 -count=1 -timeout=8m -run '^TestRoutingShadowOverhead$' -v ./internal/admission ./internal/e2e
+      - name: matched controlled routing traces
+        run: |
+          for trace in tools/routing-replay/testdata/*.json; do
+            echo "$trace"
+            go run ./tools/routing-replay -input "$trace"
+          done
       - name: race tests
         run: go test -race -count=1 ./...
+      - name: concurrent and held-collector phase-telemetry fixtures
+        run: STARLIGHT_PHASE_TELEMETRY_CONCURRENT=1 go test -count=1 -timeout=6m -run '^TestConcurrentPhaseTelemetry' -v ./internal/e2e
+      - name: disabled, sampled and full phase-telemetry profiles
+        run: STARLIGHT_PHASE_TELEMETRY_OVERHEAD=1 go test -count=1 -timeout=5m -run '^TestPhaseTelemetryOverhead$' -v ./internal/e2e
       - name: 8,000-user load test
         run: STARLIGHT_SCALE=1 go test -count=1 -run TestEightThousandUsers -v ./internal/e2e
+      - name: receipt cleanup at 200 expired rows per second
+        run: STARLIGHT_ACCOUNTING_CAPACITY=1 go test -count=1 -timeout=2m -run TestAccountingCleanupSustainsTwoHundredExpiredReceiptsASecond -v ./internal/accounting
 
   drills:
     timeout-minutes: 15
@@ -92,10 +110,17 @@ jobs:
       - name: Postgres 17 client tools, to match the server
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          sudo apt-get install -y --no-install-recommends postgresql-client-17 postgresql-17
           echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
       - name: kill the controller leader, then restore a backup into a new database
         run: go test -count=1 -run TestHighAvailabilityDrills -v ./internal/e2e
+      - name: terminal accounting survives database and fresh-worker restarts
+        run: STARLIGHT_POSTGRES_DRILL=1 go test -count=1 -timeout=2m -run '^TestTerminalAccountingSurvivesDatabaseAndWorkerRestart$' -v ./internal/e2e
+      - name: synchronous standby promotion preserves acknowledged accounting
+        env:
+          STARLIGHT_POSTGRES_DRILL: "1"
+          STARLIGHT_TEST_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: go test -race -count=1 -timeout=3m -run '^TestPostgresStandbyPromotionPreservesAcknowledgedAccounting$' -v ./internal/e2e
 
   engine:
     timeout-minutes: 15
@@ -261,6 +286,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: pinned engine download failure fixtures
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_fetch_engine.py' -v
       - name: helm lint and render
         run: |
           helm lint deploy/helm/starlight

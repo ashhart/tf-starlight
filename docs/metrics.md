@@ -153,8 +153,8 @@ exports its failure gauge without replaying old replica values.
 
 Missing, expired and future-dated measurements have no work-value sample. Future timestamps up to five seconds ahead
 may be stored but are not current until their time arrives; larger clock skew is rejected. Consumers must check
-freshness and per-field validity. No routing policy changes in this feature. Future routing consumers must apply the
-same age rule at decision time rather than treating the last Prometheus value as current indefinitely.
+freshness and per-field validity. The shadow evaluator applies the same age rule at comparison time. Live routing policy remains unchanged; a last
+Prometheus value cannot establish current work indefinitely.
 
 The console uses the same measurement time and expiry rule, shows unknown fields as a dash, and appends a live chart
 point only when a rate is known. Fleet, model and node sums are known only when every fresh report supplies the field.
@@ -174,10 +174,56 @@ This negotiated reporting, storage and dashboard behavior applies even when the 
 is false; the flag selects only the optional scrape-time collector.
 The existing `replicas.live` JSON stores the latest observation; no schema migration or extra retention table is needed.
 
+## Shadow routing observations
+
+`gateway.routing_shadow` defaults to false. Enabling it records advisory comparisons for actual committed leases while
+serving continues through the existing picker. It does not require `metrics.replica_observations` to be enabled.
+
+| Series | Type | Labels | Meaning |
+| --- | --- | --- | --- |
+| `starlight_routing_shadow_decisions_total` | counter | `model`, `reason`, `agreement` | One result per finished actual lease attempt |
+| `starlight_routing_shadow_effort_seconds` | histogram | `model`, `choice` | Heuristic effort for `actual` or `proposed` when the comparison is ready |
+| `starlight_routing_shadow_observed_estimated_ratio` | histogram | `model` | Successful observed actual-route elapsed seconds divided by its estimated effort |
+| `starlight_routing_shadow_results_total` | counter | `model`, `result` | Actual-route qualification as `observed`, `unobserved`, `failed` or `invalid` |
+
+`agreement` is `same`, `different` or `unavailable`. Reasons are `ready`, `no_alternative`, `missing_actual`,
+`too_many_candidates`, `invalid_work`, `invalid_capacity`, `unknown_observation`, `unknown_backlog`, `untracked_work`,
+`unknown_rate`, `invalid_score`, `cloud_target` or the defensive `invalid`. Availability counters include unavailable
+comparisons; effort/error samples require `ready`. A single candidate has no comparison sample. Models come from the
+catalogue; target, caller, request and cache identities never become labels.
+
+The actual-route timer runs from successful admission to finished relay, before settlement SQL. Failed or unmetered
+attempts cannot become prediction-error samples. The ratio includes gateway/node overhead, the existing prompt estimate,
+the output limit rather than predicted output length, outstanding reservations and uncredited cache effects. A score is
+not a latency upper bound. No proposed-route completion or goodput is inferred from a disagreement or a smaller score.
+The ratio uses buckets 0.01, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 64 and 256; effort uses the request histogram buckets.
+
 ## Not exported as series
 
 Per-project and per-person usage and spend remain in Postgres and the console. Node leaf certificate lifetimes remain
 available through `starlight doctor`; public TLS and workload-CA expiry are exported in the fleet series above.
+
+## Phase telemetry health
+
+An explicitly configured `telemetry.endpoint` enables fixed exporter-health series on gateway instances. The collector
+is independent of request metrics and [replica work observations](#replica-work-observations). With no endpoint there is
+no phase producer, worker or collector traffic, and these optional series are not registered.
+
+`starlight_phase_telemetry_{enqueued,sent,queue_full,failed,rejected,shutdown,invalid,requests,retries,partial,policy}_total`
+are counters without labels. `sent` counts accepted spans, `rejected` counts collector partial rejections, `failed` counts
+spans lost after failed export, and `queue_full`/`shutdown` count explicit local losses. `policy` counts spans withheld by offline mode. `requests`/`retries` count HTTP
+attempts, while `partial` counts partial-success replies even when they reject zero spans. None contains remote error
+text, collector URLs, tokens, trace IDs, callers or request content.
+
+`starlight_phase_telemetry_queue` is the current queued record count. The success-timestamp gauge
+`starlight_phase_telemetry_success_timestamp_seconds` refreshes only when a reply accepts at least one span and remains
+zero before first acceptance. Alert on drops, rejections, failures and a stale acceptance timestamp when sampled work is
+expected. Unsampled or idle traffic supplies no acceptance-freshness guarantee. Gateway and node exporter warnings use
+fixed classes at most once per 15 seconds; the node keeps the same bounded counters internally.
+
+Phase records are best-effort performance data. A trace can be partial because a component is old, disabled, downsampled,
+full or offline. Their transport is separate from durable identity and accounting audit. See [phase telemetry](telemetry.md)
+for fields, sampling, local-clock boundaries and export limits.
 
 ## Alerts and dashboard
 

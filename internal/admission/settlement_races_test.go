@@ -110,6 +110,12 @@ func TestFailedUsageInsertRetainsTheLeaseAndReservation(t *testing.T) {
 	if err != nil || leases != 1 || used != 0 || reserved != 100 {
 		t.Fatalf("failed settlement leaked changes: leases=%d used=%d reserved=%d, %v", leases, used, reserved, err)
 	}
+	var receipts, pending int
+	err = f.pool.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM terminal_leases),
+		(SELECT count(*) FROM accounting_audit)`).Scan(&receipts, &pending)
+	if err != nil || receipts != 0 || pending != 0 {
+		t.Fatalf("failed settlement leaked terminal evidence: receipts=%d pending=%d, %v", receipts, pending, err)
+	}
 	if err := a.Settle(context.Background(), lease, admission.Usage{Prompt: 3, Completion: 4, Observed: true}, record()); err != nil {
 		t.Fatal(err)
 	}

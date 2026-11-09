@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ashhart/tf-starlight/internal/accounting"
 	"github.com/ashhart/tf-starlight/internal/admission"
 	"github.com/ashhart/tf-starlight/internal/authn"
 	"github.com/ashhart/tf-starlight/internal/buildinfo"
@@ -39,42 +40,45 @@ import (
 	"github.com/ashhart/tf-starlight/internal/plans"
 	"github.com/ashhart/tf-starlight/internal/providers"
 	"github.com/ashhart/tf-starlight/internal/tasks"
+	"github.com/ashhart/tf-starlight/internal/telemetry"
 	"github.com/ashhart/tf-starlight/internal/trust"
 	"github.com/ashhart/tf-starlight/internal/web"
 )
 
 // Starlight is one running instance and every component it hosts.
 type Starlight struct {
-	Config   config.Config
-	Log      *slog.Logger
-	Pool     *pgxpool.Pool
-	Keys     *keyring.Keyring
-	Inst     Installation
-	Trust    *trust.Trust
-	Metrics  *metrics.Set
-	Auth     *authn.Authenticator
-	Catalog  *catalog.Catalog
-	Admitter *admission.Admitter
-	Policies *gateway.Policies
-	Egress   *providers.Egress
-	Sessions *session.Manager
-	Pages    *web.Renderer
-	Gateway  *gateway.Gateway
-	MCP      *mcpgateway.Handler
-	Control  *control.Server
-	Tasks    *tasks.Service
-	Plans    *plans.Service
-	Login    *login.Handler
-	Console  *console.Console
-	SCIM     *scim.Handler
-	Instance string
-	rateKey  []byte
-	mount    []func(*http.ServeMux)
-	orgMu    sync.Mutex
-	orgAt    time.Time
+	Config     config.Config
+	Log        *slog.Logger
+	Pool       *pgxpool.Pool
+	Keys       *keyring.Keyring
+	Inst       Installation
+	Trust      *trust.Trust
+	Metrics    *metrics.Set
+	Auth       *authn.Authenticator
+	Catalog    *catalog.Catalog
+	Admitter   *admission.Admitter
+	Policies   *gateway.Policies
+	Egress     *providers.Egress
+	Sessions   *session.Manager
+	Pages      *web.Renderer
+	Gateway    *gateway.Gateway
+	MCP        *mcpgateway.Handler
+	Control    *control.Server
+	Tasks      *tasks.Service
+	Plans      *plans.Service
+	Login      *login.Handler
+	Console    *console.Console
+	SCIM       *scim.Handler
+	Instance   string
+	Accounting func(accounting.MaintenanceEvent)
+	rateKey    []byte
+	mount      []func(*http.ServeMux)
+	orgMu      sync.Mutex
+	orgAt      time.Time
 
 	publicCert  *certFile
 	credentials *providers.Credentials
+	traces      *telemetry.Recorder
 }
 
 // Open connects, checks the schema and keys, and builds every component without starting listeners.
@@ -112,7 +116,7 @@ func Open(ctx context.Context, cfg config.Config, log *slog.Logger) (*Starlight,
 		return nil, err
 	}
 	if err := t.build(); err != nil {
-		pool.Close()
+		t.Close()
 		return nil, err
 	}
 	return t, nil
@@ -151,6 +155,9 @@ func (t *Starlight) org(ctx context.Context) string {
 }
 
 func (t *Starlight) build() error {
+	if t.Config.HasRole("control") {
+		t.Accounting = t.Metrics.RegisterAccountingMaintenance()
+	}
 	if t.Config.Metrics.ReplicaObservations {
 		t.Metrics.RegisterReplicaObservations(t.Pool)
 	}
@@ -204,7 +211,10 @@ func (t *Starlight) build() error {
 	}
 	identitypages.Register(t.Console)
 	fleetpages.Register(t.Console, fleetpages.WithPlans(t.Plans))
-	return t.buildMCP(proxies)
+	if err := t.buildMCP(proxies); err != nil {
+		return err
+	}
+	return t.buildTelemetry()
 }
 
 // flush drops this instance's caches after an administrative edit; other instances converge within their TTLs.
@@ -296,8 +306,9 @@ func (t *Starlight) ready(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("ready\n"))
 }
 
-// Close releases the pool.
+// Close releases background clients and the database pool.
 func (t *Starlight) Close() {
+	t.traces.Close()
 	if t.MCP != nil {
 		t.MCP.Close()
 	}

@@ -40,7 +40,7 @@ func TestSettlementAndReapingSerializeOnTheLeaseBeforeCounters(t *testing.T) {
 				reaper <- reaped{n, err}
 			}()
 			eventually(t, "both terminal paths wait for the same lease", func() bool {
-				return active(t, f.pool, "starlight_settle(", true) > 0 && active(t, f.pool, "DELETE FROM leases", true) > 0
+				return active(t, f.pool, "starlight_settle(", true) > 0 && active(t, f.pool, "starlight_reap_stale(", true) > 0
 			})
 			if err := blocker.Commit(ctx); err != nil {
 				t.Fatal(err)
@@ -56,6 +56,12 @@ func TestSettlementAndReapingSerializeOnTheLeaseBeforeCounters(t *testing.T) {
 				assertSettlementTotals(t, f, 0, 0, 100)
 			} else {
 				assertSettlementTotals(t, f, 1, 7, 7)
+			}
+			var receipts, late int
+			err = f.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM terminal_leases),
+				(SELECT count(*) FROM late_usage)`).Scan(&receipts, &late)
+			if err != nil || receipts != 1 || late != r.n {
+				t.Fatalf("terminal race receipts=%d late=%d reaped=%d: %v", receipts, late, r.n, err)
 			}
 		})
 	}

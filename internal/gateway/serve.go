@@ -34,12 +34,16 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, c *call, start t
 	ctx, cancel := context.WithCancelCause(bounded)
 	defer cancel(nil)
 	for attempt := 0; attempt < 3; attempt++ {
-		lease, err := g.Admitter.Admit(ctx, c.req)
+		admitCtx, admitTrace := g.startTrace(ctx, admissionPhase)
+		lease, err := g.Admitter.Admit(admitCtx, c.req)
+		admitTrace.End(traceResult(err))
 		if err != nil {
 			g.refuse(w, c.dialect, err)
 			return
 		}
-		resp, sent, err := g.dispatch(ctx, c, lease)
+		dispatchCtx, dispatchTrace := g.startTrace(ctx, dispatchPhase)
+		resp, sent, err := g.dispatch(dispatchCtx, c, lease)
+		dispatchTrace.End(dispatchResult(resp, err))
 		if err != nil && !sent || refused(resp) {
 			if resp != nil {
 				resp.Body.Close()
@@ -65,7 +69,10 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, c *call, start t
 		w.Header().Set("X-Starlight-Route", route)
 		w.Header().Set("X-Starlight-Model", c.model.Name)
 		strip := c.protocol == providers.ChatCompletions && c.info.Stream && !c.info.WantsUsage
-		out := relay(ctx, w, resp, c.protocol, strip, c.dialect, start, g.StreamTimings)
+		relayCtx, relayTrace := g.startTrace(ctx, relayPhase)
+		out := relay(relayCtx, w, resp, c.protocol, strip, c.dialect, start, g.StreamTimings)
+		relayTrace.End(traceUnset)
+		g.traceBoundaries(ctx, start, out.times)
 		resp.Body.Close()
 		stop()
 		switch cause := context.Cause(ctx); {
@@ -162,6 +169,10 @@ func (g *Gateway) revoked(ctx context.Context, c *call) bool {
 }
 
 func (g *Gateway) settle(ctx context.Context, c *call, l *admission.Lease, u admission.Usage, status int, outcome string, first time.Duration, start time.Time) {
+	var shadowDuration time.Duration
+	if l.Shadow != nil {
+		shadowDuration = time.Since(l.Admitted)
+	}
 	route, price := "local", c.model.Chargeback
 	if !l.Target.Local() {
 		route, price = "cloud", l.Target.Route.Prices
@@ -173,10 +184,16 @@ func (g *Gateway) settle(ctx context.Context, c *call, l *admission.Lease, u adm
 	rec := admission.Record{RequestID: c.requestID, PrincipalType: string(p.Type), PrincipalID: p.ID, UserID: p.UserID, ProjectID: p.ProjectID,
 		APIKeyID: p.KeyID, TaskID: p.TaskID, ModelName: c.model.Name, Protocol: c.protocol, Status: status, Outcome: outcome, Queue: l.Queued,
 		TTFT: first, Duration: time.Since(start), Classification: c.plan.class.String(), Client: c.client}
-	if err := g.Admitter.Settle(ctx, l, u, rec); err != nil && g.Log != nil {
+	settleCtx, settleTrace := g.startTrace(ctx, settlementPhase)
+	err := g.Admitter.Settle(settleCtx, l, u, rec)
+	settleTrace.End(traceResult(err))
+	if err != nil && g.Log != nil {
 		g.Log.Error("settle failed", "request_id", c.requestID, "error", err)
 	}
 	if g.Metrics != nil {
+		if l.Shadow != nil {
+			g.Metrics.ObserveRouting(c.model.Name, *l.Shadow, shadowDuration, u.Observed, status, outcome)
+		}
 		g.Metrics.Observe(c.model.Name, c.protocol, route, status, outcome, time.Since(start), first, u.Prompt, u.Completion, u.Cached)
 		if l.Queued > 0 {
 			g.Metrics.QueueWait.WithLabelValues(c.model.Name, c.req.Priority.String()).Observe(l.Queued.Seconds())

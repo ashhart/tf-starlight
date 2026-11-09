@@ -19,6 +19,10 @@ const affinityFloor = 0.25
 
 // Pick returns the index of the chosen candidate, or -1 when none has a free slot.
 func Pick(cands []Candidate, affinity uint64) int {
+	return pick(cands, affinity, rand.Float64)
+}
+
+func pick(cands []Candidate, affinity uint64, noise func() float64) int {
 	best, bestScore := -1, -1.0
 	if affinity != 0 {
 		var top uint64
@@ -38,7 +42,7 @@ func Pick(cands []Candidate, affinity uint64) int {
 		if c.Free <= 0 || c.Slots <= 0 {
 			continue
 		}
-		score := float64(c.Free)/float64(c.Slots) + rand.Float64()*1e-6
+		score := float64(c.Free)/float64(c.Slots) + noise()*1e-6
 		if score > bestScore {
 			best, bestScore = i, score
 		}
