@@ -88,6 +88,7 @@ func retryLease(ctx context.Context, pool *pgxpool.Pool, id, class string) error
 func drainLease(ctx context.Context, pool *pgxpool.Pool, id string, limit int) (int, error) {
 	count := 0
 	err := db.Tx(ctx, pool, func(tx pgx.Tx) error {
+		count = 0
 		var locked bool
 		if err := tx.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended('starlight-accounting:' || $1,0))`, id).
 			Scan(&locked); err != nil || !locked {
