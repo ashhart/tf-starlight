@@ -49,8 +49,8 @@ named function/custom-tool items; and Anthropic text, thinking and tool-use bloc
 unobserved. A delta containing both content and reasoning is labeled `text`. Multi-line SSE data fields are joined for
 observation without changing the bytes forwarded to the client. Inspection stops at `[DONE]`, after 64 complete data events,
 or before examining more than 256 KiB of complete event bytes. Output that does not match within this budget remains
-unknown; forwarding and legacy usage metering continue normally. Comment-only heartbeats count toward the byte budget,
-but do not consume the data-event budget.
+unknown; forwarding and legacy usage metering continue normally. Comment-only heartbeats and Messages `ping` data events
+count toward the byte budget, but do not consume the data-event budget.
 
 An incomplete event at EOF cannot establish first model output. A stream with no recognized output has no model-output
 or model-flush sample; it is not recorded as zero latency. JSON responses have no new stream samples. A stream that

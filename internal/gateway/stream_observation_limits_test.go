@@ -105,3 +105,34 @@ func TestStreamObservationMetricLabelNamesAndValuesAreFixed(t *testing.T) {
 		t.Fatal("observation label vocabulary changed")
 	}
 }
+
+func TestMessagesDataPingsDoNotExhaustThePayloadEventBudget(t *testing.T) {
+	ping := "event: ping\ndata: {\"type\":\"ping\"}\n\n"
+	output := "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"hello\"}}\n\n"
+	for _, fixture := range []struct {
+		name, prefix string
+		observed     bool
+	}{
+		{"64 data pings", strings.Repeat(ping, maxOutputInspectionEvents), true},
+		{"byte budget still bounds pings", strings.Repeat(ping, maxOutputInspectionBytes/len(ping)+1), false},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			body := fixture.prefix + output
+			times := streamTimes{start: time.Now()}
+			w := httptest.NewRecorder()
+			stream(context.Background(), w, strings.NewReader(body), &meter{protocol: providers.Messages}, false, httpx.Anthropic, &times)
+			if times.output.seen != fixture.observed || times.examinedBytes > maxOutputInspectionBytes {
+				t.Fatalf("Messages heartbeat budget: %+v", times)
+			}
+			if fixture.observed && (times.kind != textPayload || times.dataEvents != 1 || times.events != maxOutputInspectionEvents+1) {
+				t.Fatalf("Messages ping changed the output kind or wire index: %+v", times)
+			}
+			if !fixture.observed && !times.stopped {
+				t.Fatal("Messages pings bypassed the byte budget")
+			}
+			if w.Body.String() != body {
+				t.Fatal("Messages heartbeat observation changed forwarded bytes")
+			}
+		})
+	}
+}

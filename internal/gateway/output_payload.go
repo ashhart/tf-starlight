@@ -52,6 +52,16 @@ type typedPayload struct {
 	} `json:"content_block"`
 }
 
+func messageHeartbeat(protocol string, data []byte) bool {
+	if protocol != providers.Messages {
+		return false
+	}
+	var event struct {
+		Type string `json:"type"`
+	}
+	return json.Unmarshal(data, &event) == nil && event.Type == "ping"
+}
+
 // modelPayload recognizes generated text, reasoning and tool payloads, never transport or lifecycle metadata.
 func modelPayload(protocol string, data []byte) payloadKind {
 	var envelope typedPayload

@@ -48,16 +48,19 @@ func (t *streamTimes) event(protocol string, block []byte) bool {
 	}
 	t.examinedBytes += len(block)
 	hasData := bytes.HasPrefix(block, []byte("data:")) || bytes.Contains(block, []byte("\ndata:"))
-	if hasData && t.dataEvents >= maxOutputInspectionEvents {
-		t.stopped = true
-		return false
-	}
 	t.events++
 	if !hasData {
 		return false
 	}
-	t.dataEvents++
 	data := eventData(block)
+	if messageHeartbeat(protocol, data) {
+		return false
+	}
+	if t.dataEvents >= maxOutputInspectionEvents {
+		t.stopped = true
+		return false
+	}
+	t.dataEvents++
 	if bytes.Equal(data, []byte("[DONE]")) {
 		t.stopped = true
 		return false
