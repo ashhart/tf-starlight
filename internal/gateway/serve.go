@@ -16,6 +16,7 @@ import (
 	"github.com/ashhart/tf-starlight/internal/httpx"
 	"github.com/ashhart/tf-starlight/internal/levels"
 	"github.com/ashhart/tf-starlight/internal/providers"
+	"github.com/ashhart/tf-starlight/internal/routing"
 )
 
 var (
@@ -70,7 +71,8 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, c *call, start t
 		w.Header().Set("X-Starlight-Model", c.model.Name)
 		strip := c.protocol == providers.ChatCompletions && c.info.Stream && !c.info.WantsUsage
 		relayCtx, relayTrace := g.startTrace(ctx, relayPhase)
-		out := relay(relayCtx, w, resp, c.protocol, strip, c.dialect, start, g.StreamTimings)
+		calibrate := c.req.ShadowWork != nil && lease.Target.Local() && tokenEstimateProtocol(c.protocol)
+		out := relayWithCalibration(relayCtx, w, resp, c.protocol, strip, c.dialect, start, g.StreamTimings, calibrate)
 		relayTrace.End(traceUnset)
 		g.traceBoundaries(ctx, start, out.times)
 		resp.Body.Close()
@@ -191,6 +193,10 @@ func (g *Gateway) settle(ctx context.Context, c *call, l *admission.Lease, u adm
 		g.Log.Error("settle failed", "request_id", c.requestID, "error", err)
 	}
 	if g.Metrics != nil {
+		if err == nil && l.Target.Local() && c.req.ShadowWork != nil && u.TokenCountsReported && tokenEstimateProtocol(c.protocol) {
+			g.Metrics.ObserveTokenEstimate(c.model.Name, *c.req.ShadowWork,
+				routing.Work{Prompt: u.Prompt, Completion: u.Completion}, u.Observed, status, outcome)
+		}
 		if l.Shadow != nil {
 			g.Metrics.ObserveRouting(c.model.Name, *l.Shadow, shadowDuration, u.Observed, status, outcome)
 		}

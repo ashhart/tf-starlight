@@ -12,11 +12,12 @@ import (
 
 // Usage is what a request consumed; Observed is false when the final usage never arrived.
 type Usage struct {
-	Prompt     int64
-	Completion int64
-	Cached     int64
-	Micros     int64
-	Observed   bool
+	Prompt              int64
+	Completion          int64
+	Cached              int64
+	Micros              int64
+	Observed            bool
+	TokenCountsReported bool `json:"-"`
 }
 
 // Record is the usage row written when a lease settles.
