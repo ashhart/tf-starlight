@@ -49,13 +49,18 @@ func TestAuditFollowupsPreserveCombinedServingAndAccounting(t *testing.T) {
 			if combinedAccounting(t, f, total) != charged {
 				t.Fatal("terminal retry charged or recorded usage twice")
 			}
-			decisions, ready := combinedShadowMetrics(t, f)
+			decisions, ready, tokenSamples := combinedShadowMetrics(t, f)
 			want := 0.0
 			if mode.shadow {
 				want = total
 			}
 			if decisions != want || mode.shadow && ready == 0 {
 				t.Fatalf("combined shadow did not observe actual committed requests: decisions=%v ready=%v", decisions, ready)
+			}
+			for _, phase := range []string{"prompt", "completion"} {
+				if tokenSamples[phase] != uint64(want) {
+					t.Fatalf("combined token calibration phase=%s samples=%d want=%v", phase, tokenSamples[phase], want)
+				}
 			}
 			frames, posts, quiet := concurrentTraceSnapshot(t, collector)
 			traces := map[string]int{}
@@ -81,7 +86,8 @@ func TestAuditFollowupsPreserveCombinedServingAndAccounting(t *testing.T) {
 				"warmup": 1, "wall_seconds": elapsed.Seconds(), "choices_and_usage_equal": true,
 				"usage_rows": total, "terminal_receipts": total, "late_rows": 0, "leases": 0,
 				"charged_tokens": charged, "duplicate_terminal_result": "complete", "shadow_decisions": decisions,
-				"comparable_decisions": ready, "complete_traces": len(traces), "accepted_spans": len(frames)})
+				"comparable_decisions": ready, "token_calibration_samples": tokenSamples,
+				"complete_traces": len(traces), "accepted_spans": len(frames)})
 		})
 	}
 }
@@ -105,24 +111,48 @@ func combinedAccounting(t *testing.T, f *fleet, count int) int64 {
 	return charged
 }
 
-func combinedShadowMetrics(t *testing.T, f *fleet) (float64, float64) {
+func combinedShadowMetrics(t *testing.T, f *fleet) (float64, float64, map[string]uint64) {
 	t.Helper()
 	families, err := f.starlight.Metrics.Registry.Gather()
 	if err != nil {
 		t.Fatal(err)
 	}
 	var decisions, ready float64
+	tokenSamples := map[string]uint64{}
 	for _, family := range families {
 		if !strings.HasPrefix(family.GetName(), "starlight_routing_shadow_") {
 			continue
 		}
 		for _, metric := range family.Metric {
 			comparable := false
+			phase := ""
+			tokenMetric := family.GetName() == "starlight_routing_shadow_token_error_tokens"
+			if tokenMetric && len(metric.Label) != 3 {
+				t.Fatal("token calibration exported an unexpected label set")
+			}
 			for _, label := range metric.Label {
-				switch label.GetName() {
-				case "model", "reason", "agreement", "choice", "result":
-				default:
-					t.Fatal("combined shadow exported an unbounded identity label")
+				if tokenMetric {
+					switch label.GetName() {
+					case "model":
+					case "phase":
+						phase = label.GetValue()
+						if phase != "prompt" && phase != "completion" {
+							t.Fatal("token calibration exported an unbounded phase")
+						}
+					case "direction":
+						value := label.GetValue()
+						if value != "under" && value != "over" && value != "equal" {
+							t.Fatal("token calibration exported an unbounded direction")
+						}
+					default:
+						t.Fatal("token calibration exported an identity label")
+					}
+				} else {
+					switch label.GetName() {
+					case "model", "reason", "agreement", "choice", "result":
+					default:
+						t.Fatal("combined shadow exported an unbounded identity label")
+					}
 				}
 				for _, private := range []string{"concurrent-private-prompt", "concurrent-private-identity", f.key, f.project, f.user.ID, f.model} {
 					if strings.Contains(label.GetValue(), private) {
@@ -130,6 +160,12 @@ func combinedShadowMetrics(t *testing.T, f *fleet) (float64, float64) {
 					}
 				}
 				comparable = comparable || label.GetName() == "reason" && label.GetValue() == "ready"
+			}
+			if tokenMetric {
+				if phase == "" {
+					t.Fatal("token calibration lost its phase label")
+				}
+				tokenSamples[phase] += metric.GetHistogram().GetSampleCount()
 			}
 			if family.GetName() == "starlight_routing_shadow_decisions_total" {
 				decisions += metric.GetCounter().GetValue()
@@ -139,5 +175,5 @@ func combinedShadowMetrics(t *testing.T, f *fleet) (float64, float64) {
 			}
 		}
 	}
-	return decisions, ready
+	return decisions, ready, tokenSamples
 }
