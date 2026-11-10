@@ -2,7 +2,7 @@ name: tensorfold-starlight
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_USER: starlight
       POSTGRES_DB: starlight
@@ -47,7 +47,7 @@ services:
 
   prometheus:
     profiles: [monitoring]
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=15d"]
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
